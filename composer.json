@@ -1,0 +1,8 @@
+{
+    "name": "fezamarket/ecommerce",
+    "description": "E-Commerce Platform",
+    "require": {
+        "stripe/stripe-php": "^18.0",
+        "league/oauth2-google": "^4.0"
+    }
+}
