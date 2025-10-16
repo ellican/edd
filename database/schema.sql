@@ -410,7 +410,7 @@ CREATE TABLE `ai_interactions` (
   KEY `idx_created_at` (`created_at`),
   CONSTRAINT `ai_interactions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `ai_interactions_ibfk_2` FOREIGN KEY (`chat_id`) REFERENCES `chats` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=58 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=63 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -476,7 +476,12 @@ INSERT INTO `ai_interactions` VALUES
 (54,NULL,'session_1760307302062_gtjfi53s0',NULL,'Côte d\'Ivoire','I may not know that yet, but I\'m here to help! Try asking about:\n• Order tracking\n• Returns & refunds\n• Shipping info\n• Payment methods\n• Account issues','fallback','faq',0,8,NULL,'2025-10-12 22:15:51'),
 (55,NULL,'session_1760474493617_2xcmjgcyl',NULL,'How do I track my order?','Track your order from your account dashboard under \'My Orders\' or use the tracking link in your email.','fallback','faq',0,12,NULL,'2025-10-14 20:41:46'),
 (56,NULL,'session_1760516795229_7ba2w9ayj',NULL,'How do I contact support?','Reach support by email, live chat (Mon-Fri 9AM-6PM), or phone. We respond within 24 hours!','fallback','faq',0,19,NULL,'2025-10-15 08:26:52'),
-(57,NULL,'session_1760537708315_5cfjcym96',NULL,'How do I track my order?','Track your order from your account dashboard under \'My Orders\' or use the tracking link in your email.','fallback','faq',0,14,NULL,'2025-10-15 14:15:15');
+(57,NULL,'session_1760537708315_5cfjcym96',NULL,'How do I track my order?','Track your order from your account dashboard under \'My Orders\' or use the tracking link in your email.','fallback','faq',0,14,NULL,'2025-10-15 14:15:15'),
+(58,4,'session_1760561008308_e28umrqqt',NULL,'How do I track my order?','Track your order from your account dashboard under \'My Orders\' or use the tracking link in your email.','fallback','faq',0,9,NULL,'2025-10-15 20:43:33'),
+(59,4,'session_1760561008308_e28umrqqt',NULL,'i','I\'m not sure I understand that yet. Could you try asking differently? 🤔','fallback','faq',0,1,NULL,'2025-10-15 20:43:36'),
+(60,4,'session_1760561008308_e28umrqqt',NULL,'hi','Hi there 👋! Welcome to FezaMarket. How can I help you today?','fallback','faq',0,0,NULL,'2025-10-15 20:43:38'),
+(61,4,'session_1760562886394_9zcu3ql9f',NULL,'How do I contact support?','Reach support by email, live chat (Mon-Fri 9AM-6PM), or phone. We respond within 24 hours!','fallback','faq',0,1,NULL,'2025-10-15 21:14:58'),
+(62,NULL,'session_1760627746546_fd8xhyl2t',NULL,'How do I contact support?','Reach support by email, live chat (Mon-Fri 9AM-6PM), or phone. We respond within 24 hours!','fallback','faq',0,6,NULL,'2025-10-16 15:15:52');
 /*!40000 ALTER TABLE `ai_interactions` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -789,7 +794,7 @@ CREATE TABLE `audit_log` (
   KEY `idx_user_id` (`user_id`),
   KEY `idx_created_at` (`created_at`),
   KEY `idx_action` (`action`)
-) ENGINE=InnoDB AUTO_INCREMENT=231 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=237 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -1028,7 +1033,13 @@ INSERT INTO `audit_log` VALUES
 (227,4,'permission_denied','security',NULL,'105.178.32.138','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','{\"permission\":\"security.view\",\"user_role\":\"admin\",\"url\":\"\\/admin\\/security\\/\"}','2025-10-15 17:07:59'),
 (228,4,'login_success','user','4','41.186.138.204','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','[]','2025-10-15 20:29:30'),
 (229,4,'audit_logs_cleaned','admin_action',NULL,'197.157.187.139','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','{\"action\":\"audit_logs_cleaned\",\"target_type\":\"system\",\"notes\":\"Cleaned old audit logs (retention: 365 days)\",\"new_data\":{\"retention_days\":365,\"deleted_count\":0}}','2025-10-15 21:32:08'),
-(230,4,'login_success','user','4','197.157.187.139','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','[]','2025-10-15 21:34:19');
+(230,4,'login_success','user','4','197.157.187.139','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','[]','2025-10-15 21:34:19'),
+(231,NULL,'login_failed','user',NULL,'197.157.187.169','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','{\"email\":\"ellyj164@gmail.com\"}','2025-10-16 09:34:54'),
+(232,4,'login_success','user','4','197.157.187.169','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','[]','2025-10-16 09:35:00'),
+(233,4,'login_success','user','4','105.178.32.160','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','[]','2025-10-16 11:48:15'),
+(234,4,'login_success','user','4','105.178.32.160','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','[]','2025-10-16 12:56:08'),
+(235,4,'login_success','user','4','197.157.185.236','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','[]','2025-10-17 00:17:38'),
+(236,4,'login_success','user','4','197.157.186.103','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','[]','2025-10-17 00:55:20');
 /*!40000 ALTER TABLE `audit_log` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1260,7 +1271,7 @@ CREATE TABLE `brands` (
   UNIQUE KEY `uq_brands_slug` (`slug`),
   KEY `idx_brands_active` (`is_active`),
   KEY `idx_is_featured` (`is_featured`)
-) ENGINE=InnoDB AUTO_INCREMENT=145 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=140 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -2699,7 +2710,7 @@ CREATE TABLE `cart` (
 LOCK TABLES `cart` WRITE;
 /*!40000 ALTER TABLE `cart` DISABLE KEYS */;
 INSERT INTO `cart` VALUES
-(47,4,13,7,18.00,NULL,NULL,'2025-10-14 11:02:30','2025-10-15 11:20:59'),
+(47,4,13,8,18.00,NULL,NULL,'2025-10-14 11:02:30','2025-10-15 22:39:54'),
 (48,4,10,1,159.99,NULL,NULL,'2025-10-14 14:31:02','2025-10-14 14:31:02');
 /*!40000 ALTER TABLE `cart` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -2959,7 +2970,7 @@ CREATE TABLE `chats` (
   KEY `assigned_agent_id` (`assigned_agent_id`),
   CONSTRAINT `chats_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `chats_ibfk_2` FOREIGN KEY (`assigned_agent_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3186,7 +3197,7 @@ CREATE TABLE `contact_messages` (
   KEY `idx_status` (`status`),
   KEY `idx_created_at` (`created_at`),
   KEY `idx_replied_by` (`replied_by`)
-) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=39 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3226,7 +3237,14 @@ INSERT INTO `contact_messages` VALUES
 (28,'MichaelExabs','natulya.fedosova.96@mail.ru','Анимационный Станции','День рождения в лофте для 15 гостей https://shcherbinins.ru/uslugy\r\n \r\nЗаказывали детский фуршет на день рождения, дети и родители в полном восторге! Компания предложила удобное меню - мини-пиццы, фруктовые шашлычки, яркие капкейки и полезные смузи https://shcherbinins.ru/menu\r\n  Все было свежее, красочное и безопасное для малышей https://shcherbinins.ru/contacts\r\n  Сервис на высоте, привезли вовремя, помогли с расстановкой, убрали после праздника https://shcherbinins.ru/aboutus\r\n  Очень довольны, будем рекомендоват https://shcherbinins.ru/menu\r\n \r\nСвоевременная доставка, свежие продукты https://shcherbinins.ru/aboutus\r\n \r\nКакие дополнительные услуги можно заказать? \r\nКомфорт и удобство https://shcherbinins.ru/aboutus\r\n \r\nПрофессионализм и высокое качество https://shcherbinins.ru/aboutus','account_help','unread',NULL,NULL,NULL,'2025-10-14 04:27:59','2025-10-14 04:27:59'),
 (29,'DavidBuife','tacusol-6816@mail.ru','Межкомнатная Дверь Купить Недорого Москва','Функциональность и безопасность https://www.legnostyle.ru/mezhkomnatnye-dveri-knizhka.html?PAGEN_2=10\r\n   Элитные изделия предназначены для эксплуатации, а не только для эстетики https://www.legnostyle.ru/catalog/mejkomnatnie-dveri/vhodnaa-dver-e30.html\r\n   Эргономика моделей проектируется также тщательно, как и безупречный вид https://www.legnostyle.ru/catalog/mebel/gostinnie/g-2.html\r\n   Поэтому при их производстве не допускаются упущения, выбираются только безопасные решения, в том числе и экологически безопасные https://www.legnostyle.ru/mezhkomnatnye-dveri-knizhka.html?PAGEN_2=16\r\n   Такие модели выбирают особо требовательные покупатели, ценящие своё здоровье https://www.legnostyle.ru/catalog/lestnici/na-vtoroy-etazh/lestnica-l1-12.html\r\n \r\nПри создании современного и уютного интерьера в квартире или коттедже главную роль играет мебель https://www.legnostyle.ru/catalog/nashi-raboty/inter-er-kvartiri-na-arbate-k10.html\r\n   Она регулирует степень комфорта и позволяет владельцу полноценно отдыхать после тяжелого трудового дня https://www.legnostyle.ru/catalog/mejkomnatnie-dveri/diverso/?PAGEN_1=5\r\n \r\nОриентация на изготовление кухонной мебели с таким расчетом, чтобы соединить воедино знаменитый итальянский стиль, качество и дизайн с современными требованиями эргономики и функциональности https://www.legnostyle.ru/catalog/mebel/scg-3.html\r\n \r\nС другой стороны отделка может производится как всей поверхности мебели, так и ее какой-то определенной части https://www.legnostyle.ru/catalog/mejkomnatnie-dveri/nestandarnye/model-i15.html\r\n   Дополненная современными материалами - стеклом, металлам или деревом, она становится очередным произведением искусства https://www.legnostyle.ru/catalog/inter-eri/stenovie-paneli/s44.html\r\n \r\nВ действительности перепродажа товаров из Китая выгодное дело, если знать правильных продавцов и особенности китайского рынка https://www.legnostyle.ru/catalog/kuhni/kuhna-10.html\r\n   Выбор товаров и производителей в \r\nДольше, чем мы ожидали, с выбранной тканью довольно дорого вышло https://www.legnostyle.ru/catalog/mejkomnatnie-dveri/iz-massiva/?PAGEN_1=7\r\n   Но, конечно, не дороже, чем купить новую подобную мебель https://www.legnostyle.ru/catalog/mejkomnatnie-dveri/d-peregorodki/arka-a21.html\r\n   В любом случае все сделано достойно https://www.legnostyle.ru/vnutrennyaya-otdelka-derevom.html','other','unread',NULL,NULL,NULL,'2025-10-14 04:41:35','2025-10-14 04:41:35'),
 (30,'EE88evoli','secureacc@123bv1.it.com','Introduction to EE88','&lt;p&gt; \r\nUnearth the ultimate great of online entertainment with &lt;a href=https://719.cn.com/&gt;&lt;b&gt;EE88&lt;/b&gt;&lt;/a&gt; – your trusted destination looking for immersive &lt;b&gt;casino&lt;/b&gt; thrills, ravishing &lt;b&gt;x? s?&lt;/b&gt; draws, and competitive &lt;b&gt;th? thao&lt;/b&gt; betting. Whether you’re into dynamic &lt;b&gt;trò choi&lt;/b&gt;, thrilling &lt;b&gt;game slots&lt;/b&gt;, or action-packed &lt;b&gt;b?n cá&lt;/b&gt; tournaments, &lt;b&gt;EE88&lt;/b&gt; delivers a seamless and reliable judgement an eye to every player. Plummet into jackpot adventures, make use of &lt;b&gt;dá gà&lt;/b&gt; matches, or explore the vibrant crowd of &lt;b&gt;esports&lt;/b&gt; with unbeatable &lt;b&gt;khuy?n mãi&lt;/b&gt; and upper-class &lt;b&gt;uu dãi&lt;/b&gt;. At &lt;b&gt;EE88&lt;/b&gt;, players are supported by professional &lt;b&gt;cskh&lt;/b&gt; and a advantageous &lt;b&gt;d?i lý&lt;/b&gt; arrangement designed to elevate your gaming journey. Encounter excitement thoroughly top-tier &lt;b&gt;n? hu&lt;/b&gt;, &lt;b&gt;tài x?u md5&lt;/b&gt;, &lt;b&gt;xóc dia&lt;/b&gt;, &lt;b&gt;baccarat&lt;/b&gt;, and &lt;b&gt;r?ng h?&lt;/b&gt;. Join straight away occasionally at &lt;a href=https://719.cn.com/&gt;https://719.cn.com/&lt;/a&gt; to discover why countless players decide &lt;b&gt;EE88&lt;/b&gt; as a remedy for ïðåìèóì online recreation in 2025. \r\n&lt;/p&gt;','account_help','unread',NULL,NULL,NULL,'2025-10-14 08:04:53','2025-10-14 08:04:53'),
-(31,'KennethTok','g.randikr.ust@gmail.com','Hello guys','Hello mates, \r\nif you are searching for a fresh online casino, \r\nI can share with you some cool options. \r\n \r\nThese casinos have bonuses, \r\nsecure payments, and many slots and tables. \r\n \r\nCheck them out:   https://letscuturl.com/ \r\n \r\nGood luck )','return_refund','unread',NULL,NULL,NULL,'2025-10-15 06:18:36','2025-10-15 06:18:36');
+(31,'KennethTok','g.randikr.ust@gmail.com','Hello guys','Hello mates, \r\nif you are searching for a fresh online casino, \r\nI can share with you some cool options. \r\n \r\nThese casinos have bonuses, \r\nsecure payments, and many slots and tables. \r\n \r\nCheck them out:   https://letscuturl.com/ \r\n \r\nGood luck )','return_refund','unread',NULL,NULL,NULL,'2025-10-15 06:18:36','2025-10-15 06:18:36'),
+(32,'Simonfok','dinanikolskaya99@gmail.com','Hallo  i am writing about     price','Salam, qiymətinizi bilmək istədim.','product_question','unread',NULL,NULL,NULL,'2025-10-16 12:09:02','2025-10-16 12:09:02'),
+(33,'PassBancY','gugloff.444@gmail.com','Получение второго гражданства или ВНЖ в странах СНГ и Евросоюзе','Оформим второе гражданство, вид на жительство (ВНЖ) или резидентство в разных странах СНГ, Европы, Израиля и Америки. \r\n \r\nПрограммы представлены &lt;a href=https://libertyfintravel.ru/vnj-i-vtoroe-grajdanstvo&gt;&lt;b&gt;на нашем сайте&lt;/b&gt;&lt;/a&gt; \r\n \r\nВторое гражданство, практическая иммиграция, иммиграция, вид на жительство, ВНЖ, Зелёная карта (green card) США \r\nГражданство стран Евросоюза под ключ \r\nГражданство на основании корней \r\nГражданство Армении под ключ \r\nГражданство Кыргызстана под ключ \r\nГражданство Польши под ключ \r\nГражданство Болгарии под ключ \r\nГражданство Италии под ключ \r\nГражданство Греции под ключ \r\nГражданство Израиля под ключ \r\n \r\nПишите нам в &lt;a href=https://t.me/LibFinTravel&gt;&lt;b&gt;ТЕЛЕГРАМ&lt;/b&gt;&lt;/a&gt;: https://t.me/LibFinTravel \r\n \r\nИли заходите на &lt;a href=https://libertyfintravel.ru/vnj-i-vtoroe-grajdanstvo&gt;&lt;b&gt;сайт&lt;/b&gt;&lt;/a&gt;: https://libertyfintravel.ru/vnj-i-vtoroe-grajdanstvo','feedback','unread',NULL,NULL,NULL,'2025-10-16 18:56:44','2025-10-16 18:56:44'),
+(34,'MarkusRek','profconbu_64@mail.ru','Потолки Натяжные Двухуровневый','Приходите к нам в гости и в живую оцените, как стильно это смотрится https://skyprofi.ru/stati/chto-luchshe-tkanevye-natyazhnye-potolki-ili-pvx/\r\n  Как обычный потолок может преобразиться с помощью современных технологий! \r\nСтоимость 20 000 руб Подробнее https://skyprofi.ru/faq/pochemu-u-menya-provislo-polotno-natyazhnogo-potolka-eto-brak/\r\n \r\n215 800 м2 потолков https://skyprofi.ru/natyazhnye-potolki-pvkh/matovye-natyazhnye-potolki/\r\n \r\nСПБ, Заячий пер, д https://skyprofi.ru/natyazhnoj-potolok-so-skrytym-karnizom/\r\n 4к1 Фотопечать на матовом потолке 21 м https://skyprofi.ru/stati/chernyj-natjazhnoj-potolok/\r\n кв https://skyprofi.ru/stati/natyazhnye-potolki-iz-belgii-evropejskoe-kachestvo/\r\n \r\nРаботы по установке https://skyprofi.ru/tenevye-natyazhnye-potolki/\r\n \r\nСредняя стоимость одного ПВХ потолка https://skyprofi.ru/stati/francuzskie-natyazhnye-potolki/','feedback','unread',NULL,NULL,NULL,'2025-10-16 19:07:37','2025-10-16 19:07:37'),
+(35,'Edwardecore','dorofeyavinogradova199056@mail.ru','Воздушные Шары Оформление Воздушными','Хотите прежде изучить цены, и только потом заказать композицию https://zeelsharik.ru/catalog/product/nabor-37/\r\n  Выезд менеджера Big Happy к вам домой с полным каталогом студии — бесплатно! \r\nСтоимость зависит от метража, сложности узора, монтажа и доставки https://zeelsharik.ru/catalog/product/nabor-40/\r\n \r\nАрка из воздушных шаров (белый и голубой). \r\nСмешные и забавные фигуры из воздушных шариков, заказать которые вы можете в нашей студии воздушного дизайна, станут отличным украшением любого детского праздника, независимо от места его проведения – дома, в кафе или детском садике https://zeelsharik.ru/catalog/product/figura-disko-shar-golograficheskiy/\r\n \r\nАрка из шаров на открытие (зеленый https://zeelsharik.ru/catalog/product/shar-figura-lebed-s-dr/\r\n \r\nНаш ассортимент воздушных шаров настолько огромен, что вы без труда выберете именно тот вариант, от которого будут пищать от восторга не только дети, но и взрослые https://zeelsharik.ru/catalog/product/inercionnyy-motocikl/','technical_issue','unread',NULL,NULL,NULL,'2025-10-16 19:18:08','2025-10-16 19:18:08'),
+(36,'Craigmab','valerakimuvo@mail.ru','Итальянские Мягкая Мебель','Внмание! Мы можем показать вам фабрики, мебель, а также выбрать материалы и отделки по видеосвязи! Вы останетесь дома или на работе, не теряя время и деньги, а мы съездим на фабрики за вас и всё вам покажем и расскажем! В общем, работаем ???, и ждем ваших новых заказов! \r\nБыстрый просмотр https://stosastudio.ru/top-10-idej-dlya-malenkoj-kuhni/\r\n \r\nБыстрый просмотр https://stosastudio.ru/gruppo-fox-italyanskaya-mebel-kak-forma-zhizni-a-ne-prosto-dizajn/\r\n \r\nГарантия лучшей цены https://stosastudio.ru/catalog/kuhni-marosi/\r\n \r\nС нами Вы можете приобрести мебель абсолютно любой фабрики! Мы активно сотрудничаем со всеми мебельными фабриками Италии, которых в настоящее время насчитывается более полутора тысяч https://stosastudio.ru/priglashenie-v-mir-uyuta-kuhnya-v-eko-stile/\r\n  Кроме этого, с нами Вы сможете приобрести итальянские люстры, плитку, сантехнику, бытовую технику, обои, шторы и аксессуары для дома https://stosastudio.ru/catalog/kuhni-city/\r\n \r\nСтрана: Италия Стиль: Классика https://stosastudio.ru/catalog/kuhni-capri/','technical_issue','unread',NULL,NULL,NULL,'2025-10-16 19:20:56','2025-10-16 19:20:56'),
+(37,'RichardDyday','laisumake186@mail.ru','Молниезащиты Зданий','Основной вид испытаний в электроустановках до 1000В, производится при помощи мегаомметра или комплексных приборов ЭТЛ https://t-zamer.ru/\r\n  Позволяет выявить повреждение кабельных линий, как при прокладке, так и в процессе эксплуатации https://t-zamer.ru/uslugi/ispytanie-kabeley/\r\n  Произвести измерение возможно только при отключении электроэнергии, на проверяемой линии https://t-zamer.ru/v-pomosh-energetiku/kakie_izmereniya_provodyatsya_v_elektrolaboratorii/\r\n \r\n13 https://t-zamer.ru/aktsii/\r\n  Конфиденциальность персональных данных https://t-zamer.ru/uslugi/ispytaniya-siz/dielektricheskikh-perchatok/\r\n \r\nУслуги электроизмерительной лаборатории  можно заказать по телефону (495) 172-48-47 или по электронной почте info@elaba24 https://t-zamer.ru/uslugi/ispytaniya-siz/dielektricheskikh-bot/\r\n ru https://t-zamer.ru/v-pomosh-energetiku/akkreditovannaya_elektrolaboratoriya/\r\n  Наши специалисты помогут разобраться с поставленной задачей и оперативно определить стоимость испытаний https://t-zamer.ru/policy/\r\n \r\nТакже в нашей компании можно заказать независимую экспертизу электрики или технадзор электромонтажных работ, наши инженеры полностью обследуют ваш объект, по результатам вы получите полный список всех дефектов и нарушений https://t-zamer.ru/policy/\r\n \r\nЭлектроизмерительная лаборатория АО  проводит измерение паромеров качества электрической энергии на территории города Москвы и Московской области https://t-zamer.ru/contacts/\r\n  По результату выполненных измерений вы получите отчёт в соответствии с ГОСТ 32144-2013с копией свидетельства о регистрации электроизмерительной лаборатории, на основании которого сможете оптимизировать качество электроснабжения и работу оборудования, тем самым вы получите возможность сократить расходы, улучшить работу отдельных приборов и сократить количество поломок https://t-zamer.ru/uslugi/teplovizionnoe-obsledovanie/\r\n \r\nЦена от 7 500 руб https://t-zamer.ru/uslugi/teplovizionnoe-obsledovanie/','account_help','unread',NULL,NULL,NULL,'2025-10-16 19:26:51','2025-10-16 19:26:51'),
+(38,'Dannyclate','guerfupe@mail.ru','Умная Холодильник','Полная загрузка стаканов: 600 шт https://vendavtomat.ru/index.php?route=product/category&amp;path=17_76\r\n \r\nАнтивандальный металлический корпус 600 одноразовых стаканчиков Тип используемых стаканчиков: 70,3 мм Загрузка воды – 76 литров (4 бутыли по 19 литров) Загрузка сиропов: до 40 литров Ассортимент: до 4 сиропов (в базовой комплектации 2 сиропа) Программируемая стоимость напитков - без необходимости подключать ноутбук LCD-дисплей Монетоприемник NRI Currenza Green с функцией выдачи сдачи 4 номиналами монет (опция) Купюроприемник ICT A7 (опция) Баллоны СО2 – до 2 шт https://vendavtomat.ru/konfety/juice_tutti_frutti\r\n  по 10 литров (в базовую стоимость не входят) Возможность подключения к водопроводу (опция) Климат-контроль (опция) Модуль выдачи горячих напитков (опция) GPRS-модуль (опция) Бесплатный Интернет-мониторинг (при наличии GPRS-модуля) Селектор бутыли - позволяет расходовать воду из бутылей поочередно (опция) Лайтбокс с ударопрочным стеклом и возможностью смены постеров Индивидуальная подсветка ценников https://vendavtomat.ru/index.php?route=product/manufacturer/info&amp;manufacturer_id=17\r\n \r\nАвтоматам газированной воды &quot;Дельта&quot; доверили свой бизнес сотни предпринимателей https://vendavtomat.ru/index.php?route=product/special\r\n  На то, чтобы завоевать это доверие, нам потребовалось 20 лет https://vendavtomat.ru/napolnitel_mekhanicheskih_avtomatov/zhevatelnaya_rezinka_22mm_molodilnye_yablochki\r\n  Сегодня Вы можете всего за 5 минут узнать, что представляет из себя модельный ряд и какие преимущества имеют автоматы газ-воды &quot;Дельта&quot; \r\n* Цена за 1 упаковку https://vendavtomat.ru/vopros_otvet\r\n \r\nИнгредиенты для автомата: \r\nДозированная выдача воды - 4300,00 руб https://vendavtomat.ru/ingredienty_kofejnyh_avtomatov_kofemashin','seller_inquiry','unread',NULL,NULL,NULL,'2025-10-16 19:28:49','2025-10-16 19:28:49');
 /*!40000 ALTER TABLE `contact_messages` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -3253,7 +3271,7 @@ CREATE TABLE `conversation_threads` (
   KEY `idx_seller_id` (`seller_id`),
   KEY `idx_status` (`status`),
   KEY `idx_last_message_at` (`last_message_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3262,6 +3280,8 @@ CREATE TABLE `conversation_threads` (
 
 LOCK TABLES `conversation_threads` WRITE;
 /*!40000 ALTER TABLE `conversation_threads` DISABLE KEYS */;
+INSERT INTO `conversation_threads` VALUES
+(1,13,4,3,'active','2025-10-15 20:12:09','2025-10-15 20:12:09','2025-10-15 20:12:09');
 /*!40000 ALTER TABLE `conversation_threads` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -3290,7 +3310,7 @@ CREATE TABLE `countries` (
   KEY `idx_name` (`name`),
   KEY `idx_is_eu` (`is_eu`),
   KEY `idx_currency_code` (`currency_code`)
-) ENGINE=InnoDB AUTO_INCREMENT=385 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Stores comprehensive country data for checkout and localization';
+) ENGINE=InnoDB AUTO_INCREMENT=194 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Stores comprehensive country data for checkout and localization';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3713,7 +3733,7 @@ CREATE TABLE `currency_rates` (
   KEY `idx_quote` (`quote`),
   KEY `last_updated` (`last_updated`),
   KEY `idx_currency_code` (`currency_code`)
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -3724,8 +3744,8 @@ LOCK TABLES `currency_rates` WRITE;
 /*!40000 ALTER TABLE `currency_rates` DISABLE KEYS */;
 INSERT INTO `currency_rates` VALUES
 (1,'USD','USD',1.00000000,'2025-10-15 19:26:52','USD',1.000000,'$','US Dollar','2025-10-15 19:26:52'),
-(2,'USD','EUR',0.86415094,'2025-10-15 19:26:52','EUR',0.864151,'€','Euro','2025-10-15 19:26:52'),
-(3,'USD','RWF',1320.00000000,'2025-10-15 19:26:52','RWF',1320.000000,'FRw','Rwandan Franc','2025-10-15 19:26:52');
+(2,'USD','EUR',0.86415094,'2025-10-16 21:29:18','EUR',1.164144,'€','Euro','2025-10-16 21:29:18'),
+(3,'USD','RWF',1320.00000000,'2025-10-16 21:29:18','RWF',1453.950000,'FRw','Rwandan Franc','2025-10-16 21:29:18');
 /*!40000 ALTER TABLE `currency_rates` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -5879,7 +5899,7 @@ CREATE TABLE `login_attempts` (
   KEY `idx_ip_address` (`ip_address`),
   KEY `idx_success` (`success`),
   KEY `idx_attempted_at` (`attempted_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=218 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=224 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -6077,7 +6097,12 @@ INSERT INTO `login_attempts` VALUES
 (214,'ellyj164@gmail.com','172.69.254.163',1,NULL,'2025-10-15 12:46:01'),
 (215,'ellyj164@gmail.com','172.69.254.162',1,NULL,'2025-10-15 15:00:59'),
 (216,'ellyj164@gmail.com','172.68.42.70',1,NULL,'2025-10-15 18:29:30'),
-(217,'ellyj164@gmail.com','172.68.42.71',1,NULL,'2025-10-15 19:34:19');
+(217,'ellyj164@gmail.com','172.68.42.71',1,NULL,'2025-10-15 19:34:19'),
+(219,'ellyj164@gmail.com','197.234.242.127',1,NULL,'2025-10-16 07:35:00'),
+(220,'ellyj164@gmail.com','172.69.254.162',1,NULL,'2025-10-16 09:48:15'),
+(221,'ellyj164@gmail.com','172.69.254.162',1,NULL,'2025-10-16 10:56:08'),
+(222,'ellyj164@gmail.com','197.234.242.126',1,NULL,'2025-10-16 22:17:38'),
+(223,'ellyj164@gmail.com','172.68.42.71',1,NULL,'2025-10-16 22:55:20');
 /*!40000 ALTER TABLE `login_attempts` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -6745,7 +6770,7 @@ CREATE TABLE `notification_preferences` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `unique_user_category` (`user_id`,`category`),
   KEY `idx_user_id` (`user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=188 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=185 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -6993,7 +7018,7 @@ CREATE TABLE `notification_templates` (
   KEY `idx_type` (`type`),
   KEY `idx_category` (`category`),
   KEY `idx_enabled` (`enabled`)
-) ENGINE=InnoDB AUTO_INCREMENT=146 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=141 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -11624,7 +11649,7 @@ CREATE TABLE `shipping_carriers` (
   UNIQUE KEY `name` (`name`),
   UNIQUE KEY `unique_code` (`code`),
   KEY `idx_code` (`code`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -12977,7 +13002,7 @@ CREATE TABLE `user_product_views` (
   KEY `idx_user_product` (`user_id`,`product_id`),
   CONSTRAINT `fk_upv_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_upv_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=304 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=337 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -13183,7 +13208,40 @@ INSERT INTO `user_product_views` VALUES
 (300,4,9,'0mrtedasd7qhb4b1kf42pk9sv1','172.69.254.162','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=9',2,'2025-10-15 10:14:49'),
 (301,4,13,'cmoad5n5dn6q5m06gd9olgvo8h','197.234.242.127','Mozilla/5.0 (Linux; Android 13; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.105 Mobile Safari/537.36','https://fezamarket.com/product.php?id=13',4,'2025-10-15 11:20:16'),
 (302,4,13,'5vpolhpdtb10eslgr95askrjtg','197.234.242.126','Mozilla/5.0 (Linux; Android 13; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.105 Mobile Safari/537.36','https://fezamarket.com/product.php?id=13',10,'2025-10-15 11:21:00'),
-(303,4,8,'cmei29b56271fstgqsfgoeiamt','172.69.254.162','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=8',6,'2025-10-15 15:08:23');
+(303,4,8,'cmei29b56271fstgqsfgoeiamt','172.69.254.162','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=8',6,'2025-10-15 15:08:23'),
+(304,4,13,'5vpolhpdtb10eslgr95askrjtg','197.234.242.126','Mozilla/5.0 (Linux; Android 13; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.105 Mobile Safari/537.36','https://fezamarket.com/product.php?id=13',2199,'2025-10-15 20:11:59'),
+(305,4,13,'5vpolhpdtb10eslgr95askrjtg','197.234.242.126','Mozilla/5.0 (Linux; Android 13; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.105 Mobile Safari/537.36','https://fezamarket.com/product.php?id=13',5,'2025-10-15 20:12:11'),
+(306,4,13,'5vpolhpdtb10eslgr95askrjtg','172.68.42.70','Mozilla/5.0 (Linux; Android 13; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.105 Mobile Safari/537.36','https://fezamarket.com/product.php?id=13',15,'2025-10-15 20:13:09'),
+(307,4,13,'ftfbvp812s6ob84h7rsl62qefr','172.68.42.70','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=13',4,'2025-10-15 22:39:56'),
+(308,NULL,9,'64t9ncbe1ucnvcavjufv9mvpjs','172.68.102.78','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=9',3,'2025-10-16 07:28:22'),
+(309,4,10,'kf2bqsknac6mcoder898i52r90','197.234.242.126','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=10',160,'2025-10-16 07:37:56'),
+(310,4,8,'kf2bqsknac6mcoder898i52r90','197.234.242.126','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=8',4,'2025-10-16 07:38:02'),
+(311,4,8,'kf2bqsknac6mcoder898i52r90','172.68.42.70','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=8',626,'2025-10-16 07:52:45'),
+(312,4,8,'s1n3bno0c2uevk7g55t1u0nd17','172.69.254.162','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=8',2606,'2025-10-16 10:55:51'),
+(313,4,13,'s88eo8g520qkmao8njj7ae3kup','172.69.254.163','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=13',104,'2025-10-16 10:58:05'),
+(314,4,13,'s88eo8g520qkmao8njj7ae3kup','172.69.254.163','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=13',4,'2025-10-16 10:58:11'),
+(315,4,8,'s88eo8g520qkmao8njj7ae3kup','172.69.254.162','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=8',2,'2025-10-16 11:23:26'),
+(316,NULL,13,'3tr5ltr3eaub2gtisopjcr8oim','172.69.254.163','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=13',118,'2025-10-16 11:39:10'),
+(317,NULL,13,'3tr5ltr3eaub2gtisopjcr8oim','172.69.254.162','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=13',1,'2025-10-16 11:41:25'),
+(318,NULL,13,'oj713v50j5apj5md8996rfk7po','172.69.254.163','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=13',1,'2025-10-16 12:04:53'),
+(319,NULL,9,'oj713v50j5apj5md8996rfk7po','172.69.254.163','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=9',3,'2025-10-16 12:05:02'),
+(320,NULL,13,'12be7oit82h24fjinudhc2dk29','172.69.254.162','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=13',0,'2025-10-16 12:33:42'),
+(321,NULL,13,'12be7oit82h24fjinudhc2dk29','172.69.254.163','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=13',7,'2025-10-16 12:34:37'),
+(322,NULL,13,'12be7oit82h24fjinudhc2dk29','172.69.254.163','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=13',1,'2025-10-16 13:57:07'),
+(323,NULL,13,'12be7oit82h24fjinudhc2dk29','172.69.254.162','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=13',3,'2025-10-16 14:44:08'),
+(324,NULL,10,'mdo4f2elkij5s2ks2t9f7pj4jn','104.23.175.20','Mozilla/5.0 (Linux; Android 10; SM-A750F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.50 Mobile Safari/537.36','https://fezamarket.com/product.php?id=10',8,'2025-10-16 15:16:35'),
+(325,NULL,10,'mdo4f2elkij5s2ks2t9f7pj4jn','104.23.175.21','Mozilla/5.0 (Linux; Android 10; SM-A750F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.50 Mobile Safari/537.36','https://fezamarket.com/product.php?id=10',8,'2025-10-16 15:16:35'),
+(326,NULL,10,'mdo4f2elkij5s2ks2t9f7pj4jn','104.23.175.20','Mozilla/5.0 (Linux; Android 10; SM-A750F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.50 Mobile Safari/537.36','https://fezamarket.com/product.php?id=10',3,'2025-10-16 15:16:56'),
+(327,NULL,10,'mdo4f2elkij5s2ks2t9f7pj4jn','104.23.175.20','Mozilla/5.0 (Linux; Android 10; SM-A750F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.50 Mobile Safari/537.36','https://fezamarket.com/product.php?id=10',3,'2025-10-16 15:16:56'),
+(328,NULL,10,'mdo4f2elkij5s2ks2t9f7pj4jn','104.23.175.20','Mozilla/5.0 (Linux; Android 10; SM-A750F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.50 Mobile Safari/537.36','https://fezamarket.com/product.php?id=10',3,'2025-10-16 15:16:56'),
+(329,NULL,5,'12be7oit82h24fjinudhc2dk29','172.69.254.162','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=5',5,'2025-10-16 16:34:14'),
+(330,NULL,9,'12be7oit82h24fjinudhc2dk29','172.69.254.163','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=9',19,'2025-10-16 16:34:40'),
+(331,4,13,'5vpolhpdtb10eslgr95askrjtg','172.69.170.148','Mozilla/5.0 (Linux; Android 13; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.6312.105 Mobile Safari/537.36','https://fezamarket.com/product.php?id=13',2,'2025-10-16 18:44:06'),
+(332,4,13,'5klap4s6aptga08p9rm0scl5uo','197.234.242.127','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=13',5,'2025-10-16 22:18:18'),
+(333,NULL,13,'unotopsatht49ik7q5jissgosn','197.234.242.126','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=13',1,'2025-10-16 22:39:31'),
+(334,NULL,9,'unotopsatht49ik7q5jissgosn','197.234.242.126','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=9',1,'2025-10-16 22:39:36'),
+(335,NULL,13,'unotopsatht49ik7q5jissgosn','197.234.242.126','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=13',1,'2025-10-16 22:39:42'),
+(336,NULL,13,'unotopsatht49ik7q5jissgosn','172.68.42.70','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','https://fezamarket.com/product.php?id=13',5,'2025-10-16 22:55:04');
 /*!40000 ALTER TABLE `user_product_views` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -13313,7 +13371,7 @@ CREATE TABLE `user_sessions` (
   KEY `idx_user_id` (`user_id`),
   KEY `idx_session_token` (`session_token`),
   KEY `idx_expires_at` (`expires_at`)
-) ENGINE=InnoDB AUTO_INCREMENT=170 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=175 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -13491,7 +13549,12 @@ INSERT INTO `user_sessions` VALUES
 (166,4,'17a688289aee0b8c43e8181a316f7ce1b723dd5ba4cb914bed35a05b763cba293192ae0324b7905446353d34b04985ff09a2652dbfcc08cc06f8292ee1c4b8c2','105.178.104.138','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','2025-10-15 12:46:01','2025-10-15 13:46:01',1,'664db44c399ebbe42466bb33969f6c397d1f7a105003d7e8713fd8c1d3196a7b','2025-10-15 14:46:01'),
 (167,4,'03a9acd771d795407f3a3e5e303147ff6e4546d066c14d09037f3e34af8473100fc65e9ad7ee6229f31c0b67fd9256f685ed28ef9a012ef68b6c043bcc8a0784','105.178.32.138','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','2025-10-15 15:00:59','2025-10-15 16:00:59',1,'a956a957b3281f735733eeb73cb2ca70ddf8239f75dcbcfec5035a33d33cd12a','2025-10-15 17:00:59'),
 (168,4,'d40062db21aa19dffa982b7403ae5abc92a5804f6fc28d08c9ee951eea416a94a2716bdafa4f9e5bc709b092f3ddd87cc50eb53ec5e5ff3142f206e854612ebc','41.186.138.204','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','2025-10-15 18:29:30','2025-10-15 19:29:30',1,'25ccb04d6efc87b780b0047c8a6b647cd277043da33377d81b1ec2d22ce1fcac','2025-10-15 20:29:30'),
-(169,4,'0205e9d26b75d65b5817b441bbca0f2cfdd2a54fc80b69448e0be367c9e4a9fd3e7c524b3edb6db7c713bb433804010ac12aa3ee66e6ebdd49eec41837d99615','197.157.187.139','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','2025-10-15 19:34:19','2025-10-15 20:34:19',1,'9c7868fe830132dc3129722633040cb3e30743b2df67df023f1c936520064566','2025-10-15 21:34:19');
+(169,4,'0205e9d26b75d65b5817b441bbca0f2cfdd2a54fc80b69448e0be367c9e4a9fd3e7c524b3edb6db7c713bb433804010ac12aa3ee66e6ebdd49eec41837d99615','197.157.187.139','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','2025-10-15 19:34:19','2025-10-15 20:34:19',1,'9c7868fe830132dc3129722633040cb3e30743b2df67df023f1c936520064566','2025-10-15 21:34:19'),
+(170,4,'f5db00bcf65379c8749cf19c849f09610e3ab4a2c3e0ed279ba6bcf97968f131161c59ebd132e9abf8383e74c7560d37a6f7b14af9dbcb71fe02e009020b01da','197.157.187.169','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','2025-10-16 07:35:00','2025-10-16 08:35:00',1,'0620247d3309be126769c54df181c91514ac80f601c1ce2bbba1cf9ed18328ed','2025-10-16 09:35:00'),
+(171,4,'e0e07dddabfbe6fdcea47a84a0e219e35324957578dac1302f35ddb6c95df48078c8e6d7244d20a5146c4b3f325ca3a394b49c97af56eb60772293a2c7fff695','105.178.32.160','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','2025-10-16 09:48:15','2025-10-16 10:48:15',1,'ccedf4df410c2dd240309d651926e8c95a607b3be991e3ee77d91a235c33164c','2025-10-16 11:48:15'),
+(172,4,'d0735a764fa8ea59ebae513bf22ca8f7405cd72aca76aed013a4101e446ccc405dd15bebdb3abbc3fbb94ec2c5b6058eaa99629b73a990e67519b82f26fd51fb','105.178.32.160','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','2025-10-16 10:56:08','2025-10-16 11:56:08',1,'074156c2db6ebe98db0bd9c47844fadfa8caccd250330b5c92e609da2750bf55','2025-10-16 12:56:08'),
+(173,4,'f45ff55f6bb22c3c91ff70a8ea4d4e1fdf925fd56947f27cfc20fcc989bde67085a6449d6adfa80acfdb68ca89eca216b5f92fbc416fd1da74f7dfdacf0c2d2b','197.157.185.236','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','2025-10-16 22:17:38','2025-10-16 23:17:38',1,'04d82117a27d38e17c608e42a6509064abd7db2db703cb925a2aa0e05de100d6','2025-10-17 00:17:38'),
+(174,4,'a6a8f18d3cf5ae21b47e60730f52aae516038113f74b816096409cb30293c1a76346b52318b40f8a52dc41645124d3b644b5026e7f9f5d88a36269cb840d6b5c','197.157.186.103','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36','2025-10-16 22:55:20','2025-10-16 23:55:20',1,'30d43699786b4e09cc06cbd5796ad0c81f9e88cae66f17501ee504cfe2414c0d','2025-10-17 00:55:20');
 /*!40000 ALTER TABLE `user_sessions` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -14015,7 +14078,7 @@ CREATE TABLE `watchlist` (
   KEY `product_id` (`product_id`),
   CONSTRAINT `watchlist_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `watchlist_ibfk_2` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -14025,7 +14088,8 @@ CREATE TABLE `watchlist` (
 LOCK TABLES `watchlist` WRITE;
 /*!40000 ALTER TABLE `watchlist` DISABLE KEYS */;
 INSERT INTO `watchlist` VALUES
-(6,4,5,'2025-10-07 08:16:21');
+(6,4,5,'2025-10-07 08:16:21'),
+(9,4,13,'2025-10-15 20:13:03');
 /*!40000 ALTER TABLE `watchlist` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -14203,7 +14267,7 @@ CREATE TABLE `wishlists` (
   KEY `idx_created_at` (`created_at`),
   CONSTRAINT `fk_wishlists_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_wishlists_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -14217,7 +14281,8 @@ INSERT INTO `wishlists` VALUES
 (17,4,10,3,NULL,0,NULL,0,'2025-10-11 21:29:42','2025-10-11 21:29:42'),
 (18,19,8,3,NULL,0,NULL,0,'2025-10-13 00:20:44','2025-10-13 00:20:44'),
 (19,19,6,3,NULL,0,NULL,0,'2025-10-13 00:20:53','2025-10-13 00:20:53'),
-(20,4,6,3,NULL,0,NULL,0,'2025-10-14 15:04:39','2025-10-14 15:04:39');
+(20,4,6,3,NULL,0,NULL,0,'2025-10-14 15:04:39','2025-10-14 15:04:39'),
+(21,4,13,3,NULL,0,NULL,0,'2025-10-15 20:12:56','2025-10-15 20:12:56');
 /*!40000 ALTER TABLE `wishlists` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -14238,4 +14303,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-10-15 21:35:40
+-- Dump completed on 2025-10-17  0:59:45
