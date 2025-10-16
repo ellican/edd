@@ -147,39 +147,42 @@ if (Session::isLoggedIn()) {
 <style>
 /* Floating Cart Overlay */
 .floating-cart-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 9998;
+    z-index: 9998 !important;
     opacity: 0;
     transition: opacity 0.3s ease;
+    pointer-events: none;
 }
 
 .floating-cart-overlay.active {
     opacity: 1;
+    pointer-events: auto;
 }
 
 /* Floating Cart Panel */
 .floating-cart-panel {
-    position: fixed;
-    top: 0;
-    right: -420px; /* Hidden off-screen initially */
+    position: fixed !important;
+    top: 0 !important;
+    right: -420px !important; /* Hidden off-screen initially */
     width: 420px;
     max-width: 90vw;
-    height: 100vh;
+    height: 100vh !important;
     background: #ffffff;
     box-shadow: -2px 0 20px rgba(0, 0, 0, 0.15);
-    z-index: 9999;
+    z-index: 9999 !important;
     display: flex;
     flex-direction: column;
     transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
 }
 
 .floating-cart-panel.active {
-    right: 0;
+    right: 0 !important;
 }
 
 /* Cart Header */
