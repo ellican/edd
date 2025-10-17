@@ -171,22 +171,26 @@ $stats = [
 ];
 
 try {
-    // Build WHERE clause for filters
-    $whereConditions = [];
+    // Build WHERE clause for filters - need separate clauses for each table
+    $userWhereConditions = [];
+    $sellerWhereConditions = [];
     $params = [];
         
         if ($filter !== 'all') {
-            $whereConditions[] = "status = ?";
+            $userWhereConditions[] = "kd.status = ?";
+            $sellerWhereConditions[] = "sk.verification_status = ?";
             $params[] = $filter;
         }
         
         if (!empty($search)) {
-            $whereConditions[] = "(username LIKE ? OR email LIKE ? OR document_type LIKE ?)";
+            $userWhereConditions[] = "(u.username LIKE ? OR u.email LIKE ? OR kd.document_type LIKE ?)";
+            $sellerWhereConditions[] = "(u.username LIKE ? OR u.email LIKE ? OR sk.verification_type LIKE ?)";
             $searchTerm = "%$search%";
             $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm]);
         }
         
-        $whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
+        $userWhereClause = !empty($userWhereConditions) ? "WHERE " . implode(" AND ", $userWhereConditions) : "";
+        $sellerWhereClause = !empty($sellerWhereConditions) ? "WHERE " . implode(" AND ", $sellerWhereConditions) : "";
         
         // Combine both user KYC documents and seller KYC documents
         $documentsQuery = "";
@@ -203,7 +207,7 @@ try {
                 FROM kyc_documents kd
                 JOIN users u ON kd.user_id = u.id
                 LEFT JOIN users reviewer ON kd.reviewed_by = reviewer.id
-                " . ($whereClause ? $whereClause : "") . "
+                " . $userWhereClause . "
             ";
         }
         
@@ -227,7 +231,7 @@ try {
                 JOIN vendors v ON sk.vendor_id = v.id
                 JOIN users u ON v.user_id = u.id
                 LEFT JOIN users verifier ON sk.verified_by = verifier.id
-                " . ($whereClause ? $whereClause : "") . "
+                " . $sellerWhereClause . "
             ";
         }
         
@@ -255,7 +259,7 @@ try {
                 SELECT COUNT(*) as cnt
                 FROM kyc_documents kd
                 JOIN users u ON kd.user_id = u.id
-                " . ($whereClause ? $whereClause : "") . "
+                " . $userWhereClause . "
             ";
         }
         
@@ -268,7 +272,7 @@ try {
                 FROM seller_kyc sk
                 JOIN vendors v ON sk.vendor_id = v.id
                 JOIN users u ON v.user_id = u.id
-                " . ($whereClause ? $whereClause : "") . "
+                " . $sellerWhereClause . "
             ";
         }
         
