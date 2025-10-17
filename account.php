@@ -1237,8 +1237,18 @@ function createSupportTicket() {
 }
 
 function startLiveChat() {
+    const liveChatModal = document.getElementById('liveChatModal');
+    const chatMessages = document.getElementById('chatMessages');
+    
+    if (!liveChatModal || !chatMessages) {
+        console.error('Live chat modal elements not found');
+        alert('Live chat is currently unavailable. Please try contacting support through other channels.');
+        return;
+    }
+    
     // Show live chat modal
-    document.getElementById('liveChatModal').style.display = 'flex';
+    liveChatModal.style.display = 'flex';
+    chatMessages.innerHTML = '<p class="text-center text-muted">Connecting to support...</p>';
     
     // Start chat session
     fetch('/api/live-chat.php?action=start', {
@@ -1248,11 +1258,16 @@ function startLiveChat() {
             csrf_token: getCsrfToken()
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
     .then(result => {
         if (result.success) {
             document.getElementById('chatSessionId').value = result.data.chat_id;
-            document.getElementById('chatMessages').innerHTML = '';
+            chatMessages.innerHTML = '';
             
             // Start polling for messages
             startChatPolling(result.data.chat_id);
@@ -1260,14 +1275,22 @@ function startLiveChat() {
             // Load initial messages
             loadChatMessages(result.data.chat_id);
         } else {
-            document.getElementById('chatMessages').innerHTML = 
-                '<p class="text-danger">Error: ' + (result.error || 'Failed to start chat') + '</p>';
+            chatMessages.innerHTML = 
+                '<div class="alert alert-warning" style="margin: 20px;">' +
+                '<strong>Unable to start chat</strong><br>' +
+                (result.error || 'Failed to start chat session') + '<br><br>' +
+                'Please try again later or contact us at support@fezamarket.com' +
+                '</div>';
         }
     })
     .catch(error => {
         console.error('Error starting chat:', error);
-        document.getElementById('chatMessages').innerHTML = 
-            '<p class="text-danger">Error starting chat. Please try again later.</p>';
+        chatMessages.innerHTML = 
+            '<div class="alert alert-danger" style="margin: 20px;">' +
+            '<strong>Live Chat Unavailable</strong><br>' +
+            'We are currently experiencing technical difficulties with our live chat system. ' +
+            'Please email us at support@fezamarket.com or use the support ticket system.' +
+            '</div>';
     });
 }
 
@@ -1658,30 +1681,66 @@ function loadWalletBalance() {
 }
 
 function showAddFundsModal() {
-    document.getElementById('addFundsModal').style.display = 'flex';
+    const modal = document.getElementById('addFundsModal');
+    if (!modal) {
+        console.error('Add Funds modal not found');
+        alert('Add Funds feature is currently unavailable. Please try again later.');
+        return;
+    }
+    modal.style.display = 'flex';
 }
 
 function closeAddFundsModal() {
-    document.getElementById('addFundsModal').style.display = 'none';
-    document.getElementById('add-funds-form').reset();
+    const modal = document.getElementById('addFundsModal');
+    const form = document.getElementById('add-funds-form');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    if (form) {
+        form.reset();
+    }
 }
 
 function showTransferModal() {
-    document.getElementById('transferFundsModal').style.display = 'flex';
+    const modal = document.getElementById('transferFundsModal');
+    if (!modal) {
+        console.error('Transfer Funds modal not found');
+        alert('Transfer feature is currently unavailable. Please try again later.');
+        return;
+    }
+    modal.style.display = 'flex';
 }
 
 function closeTransferModal() {
-    document.getElementById('transferFundsModal').style.display = 'none';
-    document.getElementById('transfer-funds-form').reset();
+    const modal = document.getElementById('transferFundsModal');
+    const form = document.getElementById('transfer-funds-form');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    if (form) {
+        form.reset();
+    }
 }
 
 function showWithdrawModal() {
-    document.getElementById('withdrawFundsModal').style.display = 'flex';
+    const modal = document.getElementById('withdrawFundsModal');
+    if (!modal) {
+        console.error('Withdraw Funds modal not found');
+        alert('Withdraw feature is currently unavailable. Please try again later.');
+        return;
+    }
+    modal.style.display = 'flex';
 }
 
 function closeWithdrawModal() {
-    document.getElementById('withdrawFundsModal').style.display = 'none';
-    document.getElementById('withdraw-funds-form').reset();
+    const modal = document.getElementById('withdrawFundsModal');
+    const form = document.getElementById('withdraw-funds-form');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    if (form) {
+        form.reset();
+    }
 }
 
 async function submitAddFunds(event) {

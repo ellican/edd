@@ -116,7 +116,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'business_description' => $businessDescription,
                         'business_address' => $businessAddress,
                         'tax_id' => $taxId,
-                        'status' => 'pending'
+                        'status' => 'pending',
+                        'email' => $userRow['email'] ?? '',
+                        'name' => $userRow['username'] ?? ''
                     ];
                     
                     if ($vendor->create($vendorData)) {
