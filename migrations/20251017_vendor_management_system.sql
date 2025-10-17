@@ -4,6 +4,9 @@
 -- ========================================
 
 -- Vendor KYC Documents Table
+-- DEPRECATED: This table is no longer used. Use seller_kyc table instead.
+-- seller_kyc provides a more comprehensive KYC system with JSON document storage
+-- This table is kept for backward compatibility only
 CREATE TABLE IF NOT EXISTS `vendor_kyc` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `vendor_id` int(11) NOT NULL,
