@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/../../includes/init.php';
 require_once __DIR__ . '/../../includes/database.php';
+require_once __DIR__ . '/../../includes/services/VirusScanService.php';
 
 // Security: Ensure user is an admin
 if (!hasRole('admin')) {
@@ -15,6 +16,7 @@ if (!hasRole('admin')) {
 $productModel = new Product();
 $categoryModel = new Category();
 $vendorModel = new Vendor();
+$virusScanner = new VirusScanService();
 
 $categories = $categoryModel->getActive();
 $vendors = $vendorModel->findAll(); // Assuming a simple findAll method exists
@@ -48,17 +50,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Handle file upload
         $image_url = null;
         if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-            $uploadDir = __DIR__ . '/../../uploads/products/';
-            if (!is_dir($uploadDir)) {
-                mkdir($uploadDir, 0755, true);
-            }
-            $fileName = time() . '_' . basename($_FILES['image']['name']);
-            $targetFile = $uploadDir . $fileName;
-
-            if (move_uploaded_file($_FILES['image']['tmp_name'], $targetFile)) {
-                $image_url = 'products/' . $fileName; // Store relative path
+            // Scan file for viruses
+            $scanResult = $virusScanner->scanFile($_FILES['image']['tmp_name']);
+            
+            if (!$scanResult['safe']) {
+                $errors[] = 'File upload failed security scan: ' . $scanResult['message'];
             } else {
-                $errors[] = 'Failed to upload image.';
+                $uploadDir = __DIR__ . '/../../uploads/products/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+                $fileName = time() . '_' . basename($_FILES['image']['name']);
+                $targetFile = $uploadDir . $fileName;
+
+                if (move_uploaded_file($_FILES['image']['tmp_name'], $targetFile)) {
+                    $image_url = 'products/' . $fileName; // Store relative path
+                } else {
+                    $errors[] = 'Failed to upload image.';
+                }
             }
         }
 

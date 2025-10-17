@@ -6,6 +6,7 @@
 
 header('Content-Type: application/json');
 require_once __DIR__ . '/../../includes/init.php';
+require_once __DIR__ . '/../../includes/services/VirusScanService.php';
 
 // Require login
 if (!Session::isLoggedIn()) {
@@ -22,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $userId = Session::getUserId();
 $userRole = Session::getUserRole();
+$virusScanner = new VirusScanService();
 
 try {
     // Handle both JSON and multipart/form-data (for file uploads)
@@ -142,6 +144,15 @@ try {
         if ($file['size'] > $maxSize) {
             http_response_code(400);
             echo json_encode(['error' => 'File too large. Maximum 5MB.']);
+            exit;
+        }
+        
+        // Scan file for viruses
+        $scanResult = $virusScanner->scanFile($file['tmp_name']);
+        
+        if (!$scanResult['safe']) {
+            http_response_code(400);
+            echo json_encode(['error' => 'File failed security scan: ' . $scanResult['message']]);
             exit;
         }
         

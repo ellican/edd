@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/../../includes/init.php';
 require_once __DIR__ . '/../../includes/functions.php';
+require_once __DIR__ . '/../../includes/services/VirusScanService.php';
 
 // Check admin authentication - simplified
 if (!Session::isLoggedIn()) {
@@ -15,6 +16,7 @@ if (!Session::isLoggedIn()) {
 
 $pageTitle = 'Media Library - Admin';
 $currentModule = 'media';
+$virusScanner = new VirusScanService();
 
 // Handle file upload
 $uploadMessage = '';
@@ -32,29 +34,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $fileExt = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         
         if (in_array($fileExt, $allowedTypes) && $file['size'] <= 10 * 1024 * 1024) {
-            $fileName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $file['name']);
-            $filePath = $uploadDir . $fileName;
+            // Scan file for viruses
+            $scanResult = $virusScanner->scanFile($file['tmp_name']);
             
-            if (move_uploaded_file($file['tmp_name'], $filePath)) {
-                // Save to database
-                try {
-                    $db = Database::getInstance()->getConnection();
-                    $stmt = $db->prepare("INSERT INTO cms_media (filename, original_name, file_path, file_size, mime_type, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))");
-                    $stmt->execute([
-                        $fileName,
-                        $file['name'],
-                        'uploads/media/' . $fileName,
-                        $file['size'],
-                        $file['type'],
-                        Session::getUserId()
-                    ]);
-                    $uploadMessage = 'File uploaded successfully!';
-                } catch (Exception $e) {
-                    error_log("Media upload error: " . $e->getMessage());
-                    $uploadError = 'File uploaded but failed to save to database: ' . $e->getMessage();
-                }
+            if (!$scanResult['safe']) {
+                $uploadError = 'File failed security scan: ' . $scanResult['message'];
             } else {
-                $uploadError = 'Failed to upload file.';
+                $fileName = time() . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '', $file['name']);
+                $filePath = $uploadDir . $fileName;
+                
+                if (move_uploaded_file($file['tmp_name'], $filePath)) {
+                    // Save to database
+                    try {
+                        $db = Database::getInstance()->getConnection();
+                        $stmt = $db->prepare("INSERT INTO cms_media (filename, original_name, file_path, file_size, mime_type, uploaded_by, created_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))");
+                        $stmt->execute([
+                            $fileName,
+                            $file['name'],
+                            'uploads/media/' . $fileName,
+                            $file['size'],
+                            $file['type'],
+                            Session::getUserId()
+                        ]);
+                        $uploadMessage = 'File uploaded successfully!';
+                    } catch (Exception $e) {
+                        error_log("Media upload error: " . $e->getMessage());
+                        $uploadError = 'File uploaded but failed to save to database: ' . $e->getMessage();
+                    }
+                } else {
+                    $uploadError = 'Failed to upload file.';
+                }
             }
         } else {
             $uploadError = 'Invalid file type or size too large (max 10MB).';

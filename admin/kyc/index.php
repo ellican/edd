@@ -196,19 +196,46 @@ try {
         $documentsQuery = "";
         
         if ($type_filter === 'all' || $type_filter === 'user') {
-            // Get user KYC documents
-            $documentsQuery .= "
-                SELECT kd.id, kd.user_id, kd.document_type, kd.file_path, kd.original_filename, 
-                       kd.file_size, kd.mime_type, kd.status, kd.uploaded_at, kd.reviewed_by, 
-                       kd.reviewed_at, kd.review_notes,
-                       u.username, u.email, u.first_name, u.last_name,
-                       reviewer.username as reviewer_name,
-                       'user' as kyc_type
-                FROM kyc_documents kd
-                JOIN users u ON kd.user_id = u.id
-                LEFT JOIN users reviewer ON kd.reviewed_by = reviewer.id
-                " . $userWhereClause . "
-            ";
+            // Get user KYC documents - handle both old and new table structures
+            try {
+                // Try new structure first (with kyc_request_id)
+                $testStmt = $pdo->query("SELECT kyc_request_id FROM kyc_documents LIMIT 1");
+                $hasKycRequestId = true;
+            } catch (Exception $e) {
+                $hasKycRequestId = false;
+            }
+            
+            if ($hasKycRequestId) {
+                // New structure with kyc_request_id
+                $documentsQuery .= "
+                    SELECT kd.id, kr.user_id, kd.document_type, kd.file_path, kd.original_filename, 
+                           kd.file_size, kd.mime_type, 
+                           kd.verification_status as status, kd.uploaded_at, 
+                           NULL as reviewed_by, NULL as reviewed_at, kd.verification_notes as review_notes,
+                           u.username, u.email, u.first_name, u.last_name,
+                           NULL as reviewer_name,
+                           'user' as kyc_type
+                    FROM kyc_documents kd
+                    JOIN kyc_requests kr ON kd.kyc_request_id = kr.id
+                    JOIN users u ON kr.user_id = u.id
+                    WHERE 1=1
+                ";
+            } else {
+                // Old structure with user_id
+                $documentsQuery .= "
+                    SELECT kd.id, kd.user_id, kd.document_type, kd.file_path, 
+                           COALESCE(kd.original_filename, kd.file_name) as original_filename, 
+                           kd.file_size, kd.mime_type, kd.status, kd.uploaded_at, kd.reviewed_by, 
+                           kd.reviewed_at, kd.review_notes,
+                           u.username, u.email, u.first_name, u.last_name,
+                           reviewer.username as reviewer_name,
+                           'user' as kyc_type
+                    FROM kyc_documents kd
+                    JOIN users u ON kd.user_id = u.id
+                    LEFT JOIN users reviewer ON kd.reviewed_by = reviewer.id
+                    " . $userWhereClause . "
+                ";
+            }
         }
         
         if ($type_filter === 'all' || $type_filter === 'seller') {
@@ -287,47 +314,77 @@ try {
         }
         $totalPages = ceil($totalDocuments / $limit);
         
-        // Get statistics - combine both tables
-        $stmt = $pdo->query("
-            SELECT 
-                (SELECT COUNT(*) FROM kyc_documents) + (SELECT COUNT(*) FROM seller_kyc) as total
-        ");
-        $stats['total'] = $stmt->fetchColumn();
-        
-        $stmt = $pdo->query("
-            SELECT 
-                (SELECT COUNT(*) FROM kyc_documents WHERE status = 'pending') + 
-                (SELECT COUNT(*) FROM seller_kyc WHERE verification_status = 'pending') as pending
-        ");
-        $stats['pending'] = $stmt->fetchColumn();
-        
-        $stmt = $pdo->query("
-            SELECT 
-                (SELECT COUNT(*) FROM kyc_documents WHERE status = 'approved') + 
-                (SELECT COUNT(*) FROM seller_kyc WHERE verification_status = 'approved') as approved
-        ");
-        $stats['approved'] = $stmt->fetchColumn();
-        
-        $stmt = $pdo->query("
-            SELECT 
-                (SELECT COUNT(*) FROM kyc_documents WHERE status = 'rejected') + 
-                (SELECT COUNT(*) FROM seller_kyc WHERE verification_status = 'rejected') as rejected
-        ");
-        $stats['rejected'] = $stmt->fetchColumn();
-        
-        $stmt = $pdo->query("
-            SELECT 
-                (SELECT COUNT(*) FROM kyc_documents WHERE status = 'expired') + 
-                (SELECT COUNT(*) FROM seller_kyc WHERE verification_status = 'expired') as expired
-        ");
-        $stats['expired'] = $stmt->fetchColumn();
-        
-        // Try to get verified users, fallback if table doesn't exist
+        // Get statistics - combine both tables with proper error handling
         try {
-            $stmt = $pdo->query("SELECT COUNT(*) FROM kyc_verifications WHERE status = 'approved'");
-            $stats['verified_users'] = $stmt->fetchColumn();
+            // Check if kyc_documents table exists and get counts
+            $kycDocsTotal = 0;
+            $kycDocsPending = 0;
+            $kycDocsApproved = 0;
+            $kycDocsRejected = 0;
+            $kycDocsExpired = 0;
+            
+            try {
+                $stmt = $pdo->query("SELECT COUNT(*) FROM kyc_documents WHERE user_id IS NOT NULL");
+                $kycDocsTotal = $stmt->fetchColumn();
+                
+                $stmt = $pdo->query("SELECT COUNT(*) FROM kyc_documents WHERE (status = 'pending' OR verification_status = 'pending')");
+                $kycDocsPending = $stmt->fetchColumn();
+                
+                $stmt = $pdo->query("SELECT COUNT(*) FROM kyc_documents WHERE (status = 'approved' OR verification_status = 'verified')");
+                $kycDocsApproved = $stmt->fetchColumn();
+                
+                $stmt = $pdo->query("SELECT COUNT(*) FROM kyc_documents WHERE (status = 'rejected' OR verification_status = 'failed')");
+                $kycDocsRejected = $stmt->fetchColumn();
+                
+                $stmt = $pdo->query("SELECT COUNT(*) FROM kyc_documents WHERE status = 'expired'");
+                $kycDocsExpired = $stmt->fetchColumn();
+            } catch (Exception $e) {
+                error_log("Error querying kyc_documents: " . $e->getMessage());
+            }
+            
+            // Get seller_kyc counts
+            $sellerKycTotal = 0;
+            $sellerKycPending = 0;
+            $sellerKycApproved = 0;
+            $sellerKycRejected = 0;
+            $sellerKycExpired = 0;
+            
+            try {
+                $stmt = $pdo->query("SELECT COUNT(*) FROM seller_kyc");
+                $sellerKycTotal = $stmt->fetchColumn();
+                
+                $stmt = $pdo->query("SELECT COUNT(*) FROM seller_kyc WHERE verification_status = 'pending'");
+                $sellerKycPending = $stmt->fetchColumn();
+                
+                $stmt = $pdo->query("SELECT COUNT(*) FROM seller_kyc WHERE verification_status = 'approved'");
+                $sellerKycApproved = $stmt->fetchColumn();
+                
+                $stmt = $pdo->query("SELECT COUNT(*) FROM seller_kyc WHERE verification_status = 'rejected'");
+                $sellerKycRejected = $stmt->fetchColumn();
+                
+                $stmt = $pdo->query("SELECT COUNT(*) FROM seller_kyc WHERE expires_at < NOW()");
+                $sellerKycExpired = $stmt->fetchColumn();
+            } catch (Exception $e) {
+                error_log("Error querying seller_kyc: " . $e->getMessage());
+            }
+            
+            // Combine the statistics
+            $stats['total'] = $kycDocsTotal + $sellerKycTotal;
+            $stats['pending'] = $kycDocsPending + $sellerKycPending;
+            $stats['approved'] = $kycDocsApproved + $sellerKycApproved;
+            $stats['rejected'] = $kycDocsRejected + $sellerKycRejected;
+            $stats['expired'] = $kycDocsExpired + $sellerKycExpired;
+            
+            // Try to get verified users, fallback if table doesn't exist
+            try {
+                $stmt = $pdo->query("SELECT COUNT(*) FROM kyc_verifications WHERE status = 'approved'");
+                $stats['verified_users'] = $stmt->fetchColumn();
+            } catch (Exception $e) {
+                $stats['verified_users'] = $stats['approved']; // Fallback
+            }
         } catch (Exception $e) {
-            $stats['verified_users'] = $stats['approved']; // Fallback
+            error_log("Error calculating KYC statistics: " . $e->getMessage());
+            // Keep default zero values
         }
         
     } catch (Exception $e) {
@@ -669,6 +726,12 @@ if ($action === 'review' && $document_id) {
                                         <a href="?action=review&id=<?php echo $document['id']; ?>" class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-eye"></i> Review
                                         </a>
+                                        <?php if (!empty($document['file_path']) && $document['file_path'] !== 'Multiple documents'): ?>
+                                        <a href="/admin/kyc/download.php?id=<?php echo $document['id']; ?>&type=user" 
+                                           class="btn btn-sm btn-outline-success" title="Download Document">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                        <?php endif; ?>
                                     <?php endif; ?>
                                     <?php if (($document['status'] ?? 'pending') === 'pending'): ?>
                                         <?php if (hasPermission('kyc.approve')): ?>
@@ -753,12 +816,14 @@ if ($action === 'review' && $document_id) {
                             <?php else: ?>
                                 <p><i class="fas fa-file fa-3x text-muted"></i></p>
                                 <p>Preview not available for this file type</p>
-                                <?php if (!empty($currentDocument['file_path'])): ?>
-                                <a href="<?php echo htmlspecialchars($currentDocument['file_path']); ?>" 
-                                   target="_blank" class="btn btn-outline-primary">
-                                    <i class="fas fa-download me-1"></i>Download File
+                            <?php endif; ?>
+                            <?php if (!empty($currentDocument['file_path'])): ?>
+                            <div class="mt-3">
+                                <a href="/admin/kyc/download.php?id=<?php echo $currentDocument['id']; ?>&type=user" 
+                                   class="btn btn-success">
+                                    <i class="fas fa-download me-1"></i>Download Document
                                 </a>
-                                <?php endif; ?>
+                            </div>
                             <?php endif; ?>
                         </div>
                     </div>

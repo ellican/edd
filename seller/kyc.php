@@ -5,12 +5,14 @@
  */
 
 require_once __DIR__ . '/../includes/init.php';
+require_once __DIR__ . '/../includes/services/VirusScanService.php';
 
 // Require vendor login
 Session::requireLogin();
 
 $vendor = new Vendor();
 $db = getDatabase();
+$virusScanner = new VirusScanService();
 
 // Check if user is a vendor
 $vendorInfo = $vendor->findByUserId(Session::getUserId());
@@ -57,6 +59,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $allowed_types = ['jpg', 'jpeg', 'png', 'pdf'];
                             
                             if (in_array($file_ext, $allowed_types) && $_FILES['identity_documents']['size'][$key] <= 5 * 1024 * 1024) {
+                                // Scan file for viruses
+                                $scanResult = $virusScanner->scanFile($file_tmp);
+                                
+                                if (!$scanResult['safe']) {
+                                    $error = 'File upload failed security scan: ' . $scanResult['message'];
+                                    error_log("KYC upload blocked - " . $scanResult['message']);
+                                    break;
+                                }
+                                
                                 $new_filename = uniqid('id_') . '.' . $file_ext;
                                 $file_path = $upload_dir . $new_filename;
                                 
@@ -81,6 +92,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $allowed_types = ['jpg', 'jpeg', 'png', 'pdf'];
                             
                             if (in_array($file_ext, $allowed_types) && $_FILES['address_documents']['size'][$key] <= 5 * 1024 * 1024) {
+                                // Scan file for viruses
+                                $scanResult = $virusScanner->scanFile($file_tmp);
+                                
+                                if (!$scanResult['safe']) {
+                                    $error = 'File upload failed security scan: ' . $scanResult['message'];
+                                    error_log("KYC upload blocked - " . $scanResult['message']);
+                                    break;
+                                }
+                                
                                 $new_filename = uniqid('addr_') . '.' . $file_ext;
                                 $file_path = $upload_dir . $new_filename;
                                 
@@ -104,6 +124,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $allowed_types = ['jpg', 'jpeg', 'png', 'pdf'];
                             
                             if (in_array($file_ext, $allowed_types) && $_FILES['bank_documents']['size'][$key] <= 5 * 1024 * 1024) {
+                                // Scan file for viruses
+                                $scanResult = $virusScanner->scanFile($file_tmp);
+                                
+                                if (!$scanResult['safe']) {
+                                    $error = 'File upload failed security scan: ' . $scanResult['message'];
+                                    error_log("KYC upload blocked - " . $scanResult['message']);
+                                    break;
+                                }
+                                
                                 $new_filename = uniqid('bank_') . '.' . $file_ext;
                                 $file_path = $upload_dir . $new_filename;
                                 
