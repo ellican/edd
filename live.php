@@ -12,6 +12,39 @@ $liveStream = new LiveStream();
 // Get active live streams from database
 $activeStreams = $liveStream->getActiveStreams(10);
 
+// Get scheduled streams (upcoming)
+$db = db();
+$stmt = $db->prepare("
+    SELECT ls.*,
+           v.business_name as vendor_name,
+           v.id as vendor_id,
+           TIMESTAMPDIFF(SECOND, NOW(), ls.scheduled_at) as seconds_until_start
+    FROM live_streams ls
+    JOIN vendors v ON ls.vendor_id = v.id
+    WHERE ls.status = 'scheduled' 
+      AND ls.scheduled_at > NOW()
+    ORDER BY ls.scheduled_at ASC
+    LIMIT 6
+");
+$stmt->execute();
+$scheduledStreams = $stmt->fetchAll();
+
+// Get recent archived streams
+$stmt = $db->prepare("
+    SELECT ls.*,
+           v.business_name as vendor_name,
+           v.id as vendor_id,
+           TIMESTAMPDIFF(SECOND, ls.started_at, ls.ended_at) as duration_seconds
+    FROM live_streams ls
+    JOIN vendors v ON ls.vendor_id = v.id
+    WHERE ls.status = 'archived'
+      AND ls.ended_at IS NOT NULL
+    ORDER BY ls.ended_at DESC
+    LIMIT 12
+");
+$stmt->execute();
+$recentStreams = $stmt->fetchAll();
+
 // Get products for live shopping events
 $liveProducts = $product->findAll(8);
 $featuredProducts = $product->getFeatured(4);
@@ -154,58 +187,90 @@ includeHeader($page_title);
     <!-- Upcoming Events -->
     <section class="upcoming-events">
         <h2>📅 Upcoming Live Events</h2>
+        <?php if (count($scheduledStreams) > 0): ?>
         <div class="events-grid">
-            <div class="event-card">
+            <?php foreach ($scheduledStreams as $scheduled): 
+                $secondsUntil = $scheduled['seconds_until_start'];
+                $hoursUntil = floor($secondsUntil / 3600);
+                $minutesUntil = floor(($secondsUntil % 3600) / 60);
+                
+                if ($hoursUntil < 24) {
+                    $timeDisplay = $hoursUntil > 0 ? "In {$hoursUntil}h {$minutesUntil}m" : "In {$minutesUntil}m";
+                } else {
+                    $daysUntil = floor($hoursUntil / 24);
+                    $timeDisplay = "In {$daysUntil} day" . ($daysUntil > 1 ? 's' : '');
+                }
+            ?>
+            <div class="event-card" data-stream-id="<?php echo $scheduled['id']; ?>">
                 <div class="event-time">
-                    <div class="time-badge">Today 8:00 PM</div>
+                    <div class="time-badge"><?php echo $timeDisplay; ?></div>
                 </div>
                 <div class="event-content">
-                    <h3>💎 Jewelry & Watches Special</h3>
-                    <p>Exclusive collection reveal with celebrity stylist Maria Rodriguez</p>
+                    <h3><?php echo htmlspecialchars($scheduled['title']); ?></h3>
+                    <p><?php echo htmlspecialchars($scheduled['description'] ?? 'Join us for exclusive deals and products!'); ?></p>
                     <div class="event-details">
-                        <span class="host">👤 Maria Rodriguez</span>
-                        <span class="category">💎 Jewelry</span>
+                        <span class="host">👤 <?php echo htmlspecialchars($scheduled['vendor_name']); ?></span>
+                        <span class="category">📅 <?php echo date('M j, g:i A', strtotime($scheduled['scheduled_at'])); ?></span>
                     </div>
-                    <button class="btn btn-outline notify-btn" onclick="setReminder(1)">
+                    <button class="btn btn-outline notify-btn" onclick="setReminder(<?php echo $scheduled['id']; ?>)">
                         🔔 Set Reminder
                     </button>
                 </div>
             </div>
-            
-            <div class="event-card">
-                <div class="event-time">
-                    <div class="time-badge">Tomorrow 2:00 PM</div>
-                </div>
-                <div class="event-content">
-                    <h3>🎮 Gaming Gear Expo</h3>
-                    <p>Latest gaming accessories and setup tutorials</p>
-                    <div class="event-details">
-                        <span class="host">👤 GameMaster Pro</span>
-                        <span class="category">🎮 Gaming</span>
-                    </div>
-                    <button class="btn btn-outline notify-btn" onclick="setReminder(2)">
-                        🔔 Set Reminder
-                    </button>
-                </div>
-            </div>
-            
-            <div class="event-card">
-                <div class="event-time">
-                    <div class="time-badge">Sat 10:00 AM</div>
-                </div>
-                <div class="event-content">
-                    <h3>🍳 Kitchen Essentials Workshop</h3>
-                    <p>Professional chef showcases must-have cooking tools</p>
-                    <div class="event-details">
-                        <span class="host">👤 Chef Antonio</span>
-                        <span class="category">🍳 Kitchen</span>
-                    </div>
-                    <button class="btn btn-outline notify-btn" onclick="setReminder(3)">
-                        🔔 Set Reminder
-                    </button>
-                </div>
-            </div>
+            <?php endforeach; ?>
         </div>
+        <?php else: ?>
+        <div style="text-align: center; padding: 40px 20px; background: white; border-radius: 12px;">
+            <p style="color: #6b7280;">No upcoming streams scheduled. Check back soon!</p>
+        </div>
+        <?php endif; ?>
+    </section>
+
+    <!-- Recent Streams -->
+    <section class="recent-streams">
+        <h2>📼 Recent Streams</h2>
+        <?php if (count($recentStreams) > 0): ?>
+        <div class="recent-streams-grid">
+            <?php foreach ($recentStreams as $recent): 
+                $durationMinutes = floor($recent['duration_seconds'] / 60);
+                $durationHours = floor($durationMinutes / 60);
+                $durationDisplay = $durationHours > 0 
+                    ? sprintf('%dh %dm', $durationHours, $durationMinutes % 60)
+                    : sprintf('%dm', $durationMinutes);
+            ?>
+            <div class="recent-stream-card" data-stream-id="<?php echo $recent['id']; ?>">
+                <div class="recent-stream-thumbnail">
+                    <?php if ($recent['thumbnail_url']): ?>
+                        <img src="<?php echo htmlspecialchars($recent['thumbnail_url']); ?>" 
+                             alt="<?php echo htmlspecialchars($recent['title']); ?>">
+                    <?php else: ?>
+                        <div class="thumbnail-placeholder">📹</div>
+                    <?php endif; ?>
+                    <div class="replay-badge">🔴 REPLAY</div>
+                    <div class="duration-badge"><?php echo $durationDisplay; ?></div>
+                    <?php if ($recent['video_path']): ?>
+                        <button class="play-button" onclick="playStream(<?php echo $recent['id']; ?>)">
+                            ▶️
+                        </button>
+                    <?php endif; ?>
+                </div>
+                <div class="recent-stream-info">
+                    <h4><?php echo htmlspecialchars($recent['title']); ?></h4>
+                    <p class="vendor-name">👤 <?php echo htmlspecialchars($recent['vendor_name']); ?></p>
+                    <div class="stream-stats">
+                        <span class="stat">👥 <?php echo number_format($recent['viewer_count']); ?> viewers</span>
+                        <span class="stat">👍 <?php echo number_format($recent['like_count']); ?> likes</span>
+                    </div>
+                    <p class="stream-time">🕒 <?php echo date('M j, Y', strtotime($recent['ended_at'])); ?></p>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <?php else: ?>
+        <div style="text-align: center; padding: 40px 20px; background: white; border-radius: 12px;">
+            <p style="color: #6b7280;">No recent streams available. Check back after sellers go live!</p>
+        </div>
+        <?php endif; ?>
     </section>
 
     <!-- Live Shopping Benefits -->
@@ -635,6 +700,149 @@ includeHeader($page_title);
     color: #374151;
 }
 
+.recent-streams {
+    margin-bottom: 60px;
+}
+
+.recent-streams h2 {
+    color: #1f2937;
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.recent-streams-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 25px;
+}
+
+.recent-stream-card {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+.recent-stream-card:hover {
+    transform: translateY(-3px);
+}
+
+.recent-stream-thumbnail {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: linear-gradient(135deg, #1f2937, #374151);
+    overflow: hidden;
+}
+
+.recent-stream-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.thumbnail-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 48px;
+    color: white;
+}
+
+.replay-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(220, 38, 38, 0.9);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.duration-badge {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.play-button {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    opacity: 0;
+}
+
+.recent-stream-card:hover .play-button {
+    opacity: 1;
+}
+
+.play-button:hover {
+    transform: translate(-50%, -50%) scale(1.1);
+}
+
+.recent-stream-info {
+    padding: 15px;
+}
+
+.recent-stream-info h4 {
+    color: #1f2937;
+    font-size: 16px;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.vendor-name {
+    color: #6b7280;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+.stream-stats {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #374151;
+}
+
+.stream-stats .stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.stream-time {
+    color: #9ca3af;
+    font-size: 12px;
+}
+
 .live-benefits {
     margin-bottom: 60px;
 }
@@ -1057,13 +1265,26 @@ function setReminder(eventId) {
     }
 }
 
+function playStream(streamId) {
+    // Redirect to a stream player page or open modal
+    window.location.href = `/live.php?stream=${streamId}&replay=1`;
+}
+
 // Poll for live stream status updates every 30 seconds
 function checkLiveStreamStatus() {
-    fetch('/api/stream-status.php')
+    fetch('/api/streams/list.php?type=all&limit=10')
         .then(response => response.json())
         .then(data => {
-            if (data.success && data.live_streams) {
-                updateLiveStreamUI(data.live_streams);
+            if (data.success) {
+                // Check if page needs update based on counts
+                const currentActive = document.querySelectorAll('.main-live-stream, .mini-stream').length;
+                const actualActive = data.counts?.active || 0;
+                
+                // If count changed significantly, reload to show updated streams
+                if (Math.abs(currentActive - actualActive) > 0) {
+                    console.log('Stream status changed, reloading...');
+                    location.reload();
+                }
             }
         })
         .catch(error => console.error('Error checking stream status:', error));
@@ -1071,12 +1292,18 @@ function checkLiveStreamStatus() {
 
 // Trigger fake engagement for a stream
 function triggerFakeEngagement(streamId) {
-    fetch(`/api/live/trigger-engagement.php?stream_id=${streamId}`)
+    fetch(`/api/streams/engagement.php?stream_id=${streamId}`)
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                // Engagement triggered successfully
-                console.log('Fake engagement added:', data);
+            if (data.success && data.current_stats) {
+                // Update viewer count display
+                updateViewerCountDisplay(streamId, data.current_stats.viewer_count);
+                
+                // Update like count display
+                const likeBtn = document.querySelector(`.like-btn[data-stream-id="${streamId}"]`);
+                if (likeBtn && data.current_stats.like_count) {
+                    likeBtn.querySelector('.count').textContent = data.current_stats.like_count;
+                }
             }
         })
         .catch(error => console.error('Error triggering fake engagement:', error));
