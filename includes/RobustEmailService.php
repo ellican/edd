@@ -42,14 +42,50 @@ class RobustEmailService {
         $this->mailer = new PHPMailer(true);
         
         try {
-            // Server settings
-            $this->mailer->isSMTP();
-            $this->mailer->Host = $this->config['smtp_host'];
-            $this->mailer->SMTPAuth = !empty($this->config['smtp_username']);
-            $this->mailer->Username = $this->config['smtp_username'];
-            $this->mailer->Password = $this->config['smtp_password'];
-            $this->mailer->SMTPSecure = $this->config['smtp_encryption'];
-            $this->mailer->Port = $this->config['smtp_port'];
+            // Determine mail transport method
+            $mailMethod = defined('MAIL_METHOD') ? MAIL_METHOD : 'smtp';
+            
+            if ($mailMethod === 'mail') {
+                // Use PHP's mail() function (requires local MTA like Postfix)
+                $this->mailer->isMail();
+            } elseif ($mailMethod === 'sendmail') {
+                // Use sendmail binary
+                $this->mailer->isSendmail();
+                if (defined('SENDMAIL_PATH')) {
+                    $this->mailer->Sendmail = SENDMAIL_PATH;
+                }
+            } else {
+                // Use SMTP (default)
+                $this->mailer->isSMTP();
+                $this->mailer->Host = $this->config['smtp_host'];
+                
+                // Only use authentication if credentials are provided
+                // For direct sending from local server, authentication may not be needed
+                if (!empty($this->config['smtp_username']) && !empty($this->config['smtp_password'])) {
+                    $this->mailer->SMTPAuth = true;
+                    $this->mailer->Username = $this->config['smtp_username'];
+                    $this->mailer->Password = $this->config['smtp_password'];
+                } else {
+                    $this->mailer->SMTPAuth = false;
+                }
+                
+                // Set encryption and port
+                if (!empty($this->config['smtp_encryption']) && $this->config['smtp_encryption'] !== 'none') {
+                    $this->mailer->SMTPSecure = $this->config['smtp_encryption'];
+                }
+                $this->mailer->Port = $this->config['smtp_port'];
+                
+                // For direct sending, allow self-signed certificates
+                if ($this->config['smtp_host'] === 'localhost' || $this->config['smtp_host'] === '127.0.0.1') {
+                    $this->mailer->SMTPOptions = [
+                        'ssl' => [
+                            'verify_peer' => false,
+                            'verify_peer_name' => false,
+                            'allow_self_signed' => true
+                        ]
+                    ];
+                }
+            }
             
             // Disable debug output by default (can be enabled in dev mode)
             $this->mailer->SMTPDebug = defined('APP_DEBUG') && APP_DEBUG ? SMTP::DEBUG_SERVER : SMTP::DEBUG_OFF;

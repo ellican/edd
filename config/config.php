@@ -86,11 +86,16 @@ define('ORDERS_PER_PAGE', (int)env('ORDERS_PER_PAGE', 20));
 define('REVIEWS_PER_PAGE', (int)env('REVIEWS_PER_PAGE', 10));
 
 // Email settings
-define('SMTP_HOST', env('SMTP_HOST', 'smtp.fezamarket.com'));
-define('SMTP_PORT', (int)env('SMTP_PORT', 587));
-define('SMTP_USERNAME', env('SMTP_USERNAME', 'no-reply@fezamarket.com'));
+// Mail method: 'smtp' (default), 'mail' (PHP mail() - requires local MTA), or 'sendmail' (sendmail binary)
+define('MAIL_METHOD', env('MAIL_METHOD', 'smtp'));
+define('SENDMAIL_PATH', env('SENDMAIL_PATH', '/usr/sbin/sendmail -t -i'));
+
+// SMTP configuration for direct server sending or relay
+define('SMTP_HOST', env('SMTP_HOST', 'localhost'));
+define('SMTP_PORT', (int)env('SMTP_PORT', 25));
+define('SMTP_USERNAME', env('SMTP_USERNAME', ''));
 define('SMTP_PASSWORD', env('SMTP_PASSWORD', ''));
-define('SMTP_ENCRYPTION', env('SMTP_ENCRYPTION', 'tls'));
+define('SMTP_ENCRYPTION', env('SMTP_ENCRYPTION', 'none'));
 define('FROM_EMAIL', env('FROM_EMAIL', 'no-reply@fezamarket.com'));
 define('MAIL_FROM_ADDRESS', env('MAIL_FROM_ADDRESS', 'no-reply@fezamarket.com'));
 define('MAIL_FROM_NAME', env('MAIL_FROM_NAME', APP_NAME));
