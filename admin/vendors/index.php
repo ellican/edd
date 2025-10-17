@@ -193,8 +193,13 @@ if ($status_filter) {
 }
 
 if ($kyc_filter) {
-    $where_conditions[] = "v.kyc_status = ?";
-    $params[] = $kyc_filter;
+    if ($kyc_filter === 'not_submitted') {
+        // Filter for vendors with no KYC submission (NULL seller_kyc records)
+        $where_conditions[] = "sk.id IS NULL";
+    } else {
+        $where_conditions[] = "sk.verification_status = ?";
+        $params[] = $kyc_filter;
+    }
 }
 
 if ($search) {
@@ -233,9 +238,13 @@ try {
     $query = "SELECT v.*, u.username, u.email, u.created_at as user_created,
                 COALESCE(v.total_products, 0) as product_count,
                 COALESCE(v.total_orders, 0) as order_count,
-                COALESCE(v.total_sales, 0.00) as total_sales
+                COALESCE(v.total_sales, 0.00) as total_sales,
+                sk.verification_status as kyc_status,
+                sk.submitted_at as kyc_submitted_at,
+                sk.verified_at as kyc_verified_at
          FROM vendors v
          LEFT JOIN users u ON v.user_id = u.id
+         LEFT JOIN seller_kyc sk ON v.id = sk.vendor_id
          WHERE {$where_clause}
          ORDER BY v.{$sort_by} {$sort_order}
          LIMIT ? OFFSET ?";
@@ -245,12 +254,13 @@ try {
     // Get overall statistics (without filters)
     $stats_query = "SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
-        SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected,
-        SUM(CASE WHEN status = 'suspended' THEN 1 ELSE 0 END) as suspended,
-        SUM(CASE WHEN kyc_status = 'pending' OR kyc_status = 'in_review' THEN 1 ELSE 0 END) as pending_kyc
-    FROM vendors";
+        SUM(CASE WHEN v.status = 'pending' THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN v.status = 'approved' THEN 1 ELSE 0 END) as approved,
+        SUM(CASE WHEN v.status = 'rejected' THEN 1 ELSE 0 END) as rejected,
+        SUM(CASE WHEN v.status = 'suspended' THEN 1 ELSE 0 END) as suspended,
+        SUM(CASE WHEN sk.verification_status IN ('pending', 'in_review') THEN 1 ELSE 0 END) as pending_kyc
+    FROM vendors v
+    LEFT JOIN seller_kyc sk ON v.id = sk.vendor_id";
     
     $stats = Database::query($stats_query)->fetch();
 } catch (Exception $e) {
@@ -418,6 +428,7 @@ try {
                             <option value="in_review" <?php echo $kyc_filter === 'in_review' ? 'selected' : ''; ?>>In Review</option>
                             <option value="approved" <?php echo $kyc_filter === 'approved' ? 'selected' : ''; ?>>Approved</option>
                             <option value="rejected" <?php echo $kyc_filter === 'rejected' ? 'selected' : ''; ?>>Rejected</option>
+                            <option value="requires_resubmission" <?php echo $kyc_filter === 'requires_resubmission' ? 'selected' : ''; ?>>Requires Resubmission</option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -564,16 +575,28 @@ try {
                                 </td>
                                 <td>
                                     <?php
-                                    $kycStatusClass = [
-                                        'not_submitted' => 'secondary',
-                                        'pending' => 'warning',
-                                        'in_review' => 'info',
-                                        'approved' => 'success',
-                                        'rejected' => 'danger'
-                                    ][$vendor['kyc_status'] ?? 'not_submitted'] ?? 'secondary';
+                                    // Map seller_kyc verification_status to display status
+                                    $kycStatus = $vendor['kyc_status'] ?? null;
+                                    
+                                    if ($kycStatus === null) {
+                                        $kycStatusDisplay = 'Not submitted';
+                                        $kycStatusClass = 'secondary';
+                                    } else {
+                                        $statusMap = [
+                                            'pending' => ['display' => 'Pending', 'class' => 'warning'],
+                                            'in_review' => ['display' => 'In Review', 'class' => 'info'],
+                                            'approved' => ['display' => 'Approved', 'class' => 'success'],
+                                            'rejected' => ['display' => 'Rejected', 'class' => 'danger'],
+                                            'requires_resubmission' => ['display' => 'Requires Resubmission', 'class' => 'warning']
+                                        ];
+                                        
+                                        $statusInfo = $statusMap[$kycStatus] ?? ['display' => 'Unknown', 'class' => 'secondary'];
+                                        $kycStatusDisplay = $statusInfo['display'];
+                                        $kycStatusClass = $statusInfo['class'];
+                                    }
                                     ?>
                                     <span class="badge bg-<?php echo $kycStatusClass; ?> status-badge">
-                                        <?php echo ucfirst(str_replace('_', ' ', $vendor['kyc_status'] ?? 'Not Submitted')); ?>
+                                        <?php echo $kycStatusDisplay; ?>
                                     </span>
                                 </td>
                                 <td>

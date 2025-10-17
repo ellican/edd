@@ -35,7 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($userData) {
                 // Generate password reset token (like reference)
                 $token = bin2hex(random_bytes(32));
-                $token_expiry = date('Y-m-d H:i:s', strtotime('+15 minutes'));
                 
                 // Store the token in email_tokens table
                 $db = Database::getInstance()->getConnection();
@@ -47,46 +46,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 $deleteStmt->execute([$userData['id']]);
                 
-                // Store new token
+                // Store new token with expiry calculated in database time (1 hour from NOW)
                 $stmt = $db->prepare("
-                    INSERT INTO email_tokens (user_id, token, type, email, expires_at, created_at)
-                    VALUES (?, ?, 'password_reset', ?, ?, ?)
+                    INSERT INTO email_tokens (user_id, token, type, email, expires_at, ip_address, created_at)
+                    VALUES (?, ?, 'password_reset', ?, DATE_ADD(NOW(), INTERVAL 1 HOUR), ?, NOW())
                 ");
                 $tokenStored = $stmt->execute([
                     $userData['id'],
                     $token,
                     $userData['email'],
-                    $token_expiry,
-                    date('Y-m-d H:i:s')
+                    $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1'
                 ]);
                 
                 if ($tokenStored) {
-                    // Send the reset link email using RobustEmailService
+                    // Send the reset link email using RobustEmailService with professional template
                     $reset_link = APP_URL . "/reset-password.php?token=" . $token;
                     $subject = "Password Reset Request - " . FROM_NAME;
                     
-                    // Create HTML email body
-                    $email_message = "
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <meta charset='UTF-8'>
-                        <title>Password Reset Request</title>
-                    </head>
-                    <body style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>
-                        <h1 style='color: #333;'>Password Reset Request</h1>
-                        <p>Hello {$userData['first_name']},</p>
-                        <p>You requested a password reset. Click the button below to set a new password:</p>
-                        <div style='text-align: center; margin: 30px 0;'>
-                            <a href='{$reset_link}' style='background-color: #dc3545; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;'>Reset Password</a>
-                        </div>
-                        <p>If the button doesn't work, copy and paste this link into your browser:</p>
-                        <p><a href='{$reset_link}'>{$reset_link}</a></p>
-                        <p>This link will expire in 15 minutes. If you did not request this, please ignore this email.</p>
-                        <hr style='margin: 30px 0; border: none; border-top: 1px solid #eee;'>
-                        <p style='color: #666; font-size: 12px;'>This email was sent from " . FROM_NAME . ". For security, never share this link with anyone.</p>
-                    </body>
-                    </html>";
+                    // Load professional HTML email template
+                    $templatePath = __DIR__ . '/includes/emails/reset_password_template.php';
+                    ob_start();
+                    include $templatePath;
+                    $email_message = ob_get_clean();
+                    
+                    // Replace template placeholders
+                    $replacements = [
+                        '{{USERNAME}}' => htmlspecialchars($userData['first_name']),
+                        '{{RESET_LINK}}' => htmlspecialchars($reset_link),
+                        '{{APP_NAME}}' => htmlspecialchars(APP_NAME),
+                        '{{APP_URL}}' => htmlspecialchars(APP_URL),
+                        '{{IP_ADDRESS}}' => htmlspecialchars($_SERVER['REMOTE_ADDR'] ?? 'Unknown'),
+                        '{{YEAR}}' => date('Y'),
+                        '{{SUPPORT_EMAIL}}' => htmlspecialchars(SUPPORT_EMAIL ?? FROM_EMAIL)
+                    ];
+                    $email_message = str_replace(array_keys($replacements), array_values($replacements), $email_message);
                     
                     try {
                         $emailService = new RobustEmailService();
