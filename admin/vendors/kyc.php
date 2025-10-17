@@ -52,87 +52,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $admin_id = Session::getUserId();
         
         switch ($action) {
-            case 'verify_document':
-                $doc_id = $_POST['document_id'] ?? 0;
-                $status = $_POST['status'] ?? 'approved';
-                $remarks = $_POST['remarks'] ?? '';
+            case 'update_status':
+                $new_status = $_POST['status'] ?? 'pending';
+                $notes = $_POST['notes'] ?? '';
                 
+                // Update seller_kyc record status
                 Database::query(
-                    "UPDATE vendor_kyc SET 
-                        status = ?,
+                    "UPDATE seller_kyc SET 
+                        verification_status = ?,
                         verified_by = ?,
                         verified_at = NOW(),
-                        remarks = ?,
+                        verification_notes = ?,
                         rejection_reason = ?
-                     WHERE id = ? AND vendor_id = ?",
+                     WHERE vendor_id = ?",
                     [
-                        $status,
+                        $new_status,
                         $admin_id,
-                        $remarks,
-                        $status === 'rejected' ? $remarks : null,
-                        $doc_id,
+                        $notes,
+                        $new_status === 'rejected' ? $notes : null,
                         $vendor_id
                     ]
                 );
                 
                 // Update vendor KYC status
-                $all_docs = Database::query(
-                    "SELECT status FROM vendor_kyc WHERE vendor_id = ?",
-                    [$vendor_id]
-                )->fetchAll();
-                
-                $all_approved = true;
-                $has_rejected = false;
-                foreach ($all_docs as $doc) {
-                    if ($doc['status'] !== 'approved') {
-                        $all_approved = false;
-                    }
-                    if ($doc['status'] === 'rejected') {
-                        $has_rejected = true;
-                    }
-                }
-                
-                $vendor_kyc_status = 'pending';
-                if ($all_approved && count($all_docs) > 0) {
-                    $vendor_kyc_status = 'approved';
-                } elseif ($has_rejected) {
-                    $vendor_kyc_status = 'rejected';
-                } elseif ($status === 'in_review') {
-                    $vendor_kyc_status = 'in_review';
-                }
-                
                 Database::query(
                     "UPDATE vendors SET kyc_status = ?, kyc_verified_at = ? WHERE id = ?",
-                    [$vendor_kyc_status, $vendor_kyc_status === 'approved' ? date('Y-m-d H:i:s') : null, $vendor_id]
+                    [$new_status, $new_status === 'approved' ? date('Y-m-d H:i:s') : null, $vendor_id]
                 );
                 
                 // Log audit
                 Database::query(
                     "INSERT INTO vendor_audit_logs (vendor_id, admin_id, action, action_type, new_value, reason, ip_address) 
-                     VALUES (?, ?, 'kyc_document_verified', 'kyc_verification', ?, ?, ?)",
-                    [$vendor_id, $admin_id, $status, $remarks, $_SERVER['REMOTE_ADDR'] ?? '']
+                     VALUES (?, ?, 'kyc_status_updated', 'kyc_verification', ?, ?, ?)",
+                    [$vendor_id, $admin_id, $new_status, $notes, $_SERVER['REMOTE_ADDR'] ?? '']
                 );
                 
-                $_SESSION['success_message'] = 'KYC document status updated.';
+                $_SESSION['success_message'] = 'KYC status updated successfully.';
                 
                 // Send notification
                 if (function_exists('sendEmail')) {
-                    $subject = "KYC Document " . ucfirst($status);
-                    $message = "Your KYC document has been {$status}.\n\n";
-                    if ($remarks) {
-                        $message .= "Remarks: {$remarks}";
+                    $subject = "KYC Verification " . ucfirst($new_status);
+                    $message = "Your KYC verification status has been updated to: {$new_status}.\n\n";
+                    if ($notes) {
+                        $message .= "Notes: {$notes}";
                     }
                     sendEmail($vendor['email'], $subject, $message);
                 }
                 break;
                 
             case 'request_resubmission':
-                $doc_id = $_POST['document_id'] ?? 0;
                 $message = $_POST['resubmission_message'] ?? '';
                 
                 Database::query(
-                    "UPDATE vendor_kyc SET status = 'resubmission_required', remarks = ? WHERE id = ? AND vendor_id = ?",
-                    [$message, $doc_id, $vendor_id]
+                    "UPDATE seller_kyc SET verification_status = 'requires_resubmission', verification_notes = ? WHERE vendor_id = ?",
+                    [$message, $vendor_id]
+                );
+                
+                Database::query(
+                    "UPDATE vendors SET kyc_status = 'requires_resubmission' WHERE id = ?",
+                    [$vendor_id]
                 );
                 
                 Database::query(
@@ -148,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     sendEmail(
                         $vendor['email'],
                         'KYC Document Resubmission Required',
-                        "Please resubmit your KYC document.\n\nReason: {$message}"
+                        "Please resubmit your KYC documents.\n\nReason: {$message}"
                     );
                 }
                 break;
@@ -162,19 +140,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Get KYC documents
+// Get KYC submission
 try {
-    $kyc_docs = Database::query(
-        "SELECT vk.*, u.username as verified_by_name
-         FROM vendor_kyc vk
-         LEFT JOIN users u ON vk.verified_by = u.id
-         WHERE vk.vendor_id = ?
-         ORDER BY vk.uploaded_at DESC",
+    $kyc_submission = Database::query(
+        "SELECT sk.*, u.username as verified_by_name
+         FROM seller_kyc sk
+         LEFT JOIN users u ON sk.verified_by = u.id
+         WHERE sk.vendor_id = ?
+         ORDER BY sk.submitted_at DESC
+         LIMIT 1",
         [$vendor_id]
-    )->fetchAll();
+    )->fetch();
 } catch (Exception $e) {
-    $kyc_docs = [];
-    Logger::error("Failed to fetch KYC documents: " . $e->getMessage());
+    $kyc_submission = null;
+    Logger::error("Failed to fetch KYC submission: " . $e->getMessage());
 }
 
 $page_title = 'KYC Management: ' . htmlspecialchars($vendor['business_name']);
@@ -273,46 +252,46 @@ $page_title = 'KYC Management: ' . htmlspecialchars($vendor['business_name']);
             </div>
         </div>
 
-        <!-- KYC Documents -->
-        <?php if (empty($kyc_docs)): ?>
+        <!-- KYC Submission -->
+        <?php if (!$kyc_submission): ?>
         <div class="card">
             <div class="card-body text-center py-5">
                 <i class="fas fa-id-card fa-4x text-muted mb-3"></i>
-                <h4>No KYC Documents Uploaded</h4>
-                <p class="text-muted">This vendor has not uploaded any KYC documents yet.</p>
+                <h4>No KYC Submission</h4>
+                <p class="text-muted">This vendor has not submitted KYC documents yet.</p>
             </div>
         </div>
-        <?php else: ?>
-        <?php foreach ($kyc_docs as $doc): ?>
-        <div class="card kyc-status-card">
+        <?php else: 
+            $identity_docs = json_decode($kyc_submission['identity_documents'] ?? '[]', true) ?: [];
+            $address_docs = json_decode($kyc_submission['address_verification'] ?? '[]', true) ?: [];
+            $bank_docs = json_decode($kyc_submission['bank_verification'] ?? '[]', true) ?: [];
+            $business_docs = json_decode($kyc_submission['business_documents'] ?? '[]', true) ?: [];
+        ?>
+        <div class="card kyc-status-card mb-4">
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-8">
-                        <h5>
-                            <i class="fas fa-file-alt me-2"></i>
-                            <?php echo ucfirst(str_replace('_', ' ', $doc['document_type'])); ?>
-                        </h5>
+                        <h5><i class="fas fa-info-circle me-2"></i>KYC Submission Overview</h5>
                         
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <strong>File Name:</strong><br>
-                                <?php echo htmlspecialchars($doc['file_name']); ?>
+                                <strong>Verification Type:</strong><br>
+                                <?php echo ucfirst($kyc_submission['verification_type']); ?>
                             </div>
                             <div class="col-md-6">
-                                <strong>File Size:</strong><br>
-                                <?php echo number_format($doc['file_size'] / 1024, 2); ?> KB
+                                <strong>Submitted:</strong><br>
+                                <?php echo date('M d, Y H:i', strtotime($kyc_submission['submitted_at'])); ?>
                             </div>
+                            <?php if ($kyc_submission['business_registration_number']): ?>
                             <div class="col-md-6 mt-2">
-                                <strong>Uploaded:</strong><br>
-                                <?php echo date('M d, Y H:i', strtotime($doc['uploaded_at'])); ?>
+                                <strong>Business Registration #:</strong><br>
+                                <?php echo htmlspecialchars($kyc_submission['business_registration_number']); ?>
                             </div>
-                            <?php if ($doc['expiry_date']): ?>
+                            <?php endif; ?>
+                            <?php if ($kyc_submission['tax_identification_number']): ?>
                             <div class="col-md-6 mt-2">
-                                <strong>Expiry Date:</strong><br>
-                                <?php echo date('M d, Y', strtotime($doc['expiry_date'])); ?>
-                                <?php if (strtotime($doc['expiry_date']) < time()): ?>
-                                <span class="badge bg-danger">Expired</span>
-                                <?php endif; ?>
+                                <strong>Tax ID:</strong><br>
+                                <?php echo htmlspecialchars($kyc_submission['tax_identification_number']); ?>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -320,87 +299,69 @@ $page_title = 'KYC Management: ' . htmlspecialchars($vendor['business_name']);
                         <div class="mb-3">
                             <strong>Status:</strong>
                             <?php
-                            $docStatusClass = [
+                            $statusClass = [
                                 'pending' => 'warning',
                                 'in_review' => 'info',
                                 'approved' => 'success',
                                 'rejected' => 'danger',
-                                'resubmission_required' => 'warning'
-                            ][$doc['status']] ?? 'secondary';
+                                'requires_resubmission' => 'warning'
+                            ][$kyc_submission['verification_status']] ?? 'secondary';
                             ?>
-                            <span class="badge bg-<?php echo $docStatusClass; ?>">
-                                <?php echo ucfirst(str_replace('_', ' ', $doc['status'])); ?>
+                            <span class="badge bg-<?php echo $statusClass; ?>">
+                                <?php echo ucfirst(str_replace('_', ' ', $kyc_submission['verification_status'])); ?>
                             </span>
                         </div>
                         
-                        <?php if ($doc['verified_at']): ?>
+                        <?php if ($kyc_submission['verified_at']): ?>
                         <div class="mb-2">
                             <strong>Verified:</strong> 
-                            <?php echo date('M d, Y H:i', strtotime($doc['verified_at'])); ?>
-                            <?php if ($doc['verified_by_name']): ?>
-                            by <?php echo htmlspecialchars($doc['verified_by_name']); ?>
+                            <?php echo date('M d, Y H:i', strtotime($kyc_submission['verified_at'])); ?>
+                            <?php if ($kyc_submission['verified_by_name']): ?>
+                            by <?php echo htmlspecialchars($kyc_submission['verified_by_name']); ?>
                             <?php endif; ?>
                         </div>
                         <?php endif; ?>
                         
-                        <?php if ($doc['remarks']): ?>
+                        <?php if ($kyc_submission['verification_notes']): ?>
                         <div class="alert alert-info mb-0">
-                            <strong>Remarks:</strong><br>
-                            <?php echo nl2br(htmlspecialchars($doc['remarks'])); ?>
+                            <strong>Verification Notes:</strong><br>
+                            <?php echo nl2br(htmlspecialchars($kyc_submission['verification_notes'])); ?>
                         </div>
                         <?php endif; ?>
                         
-                        <?php if ($doc['status'] === 'rejected' && $doc['rejection_reason']): ?>
+                        <?php if ($kyc_submission['verification_status'] === 'rejected' && $kyc_submission['rejection_reason']): ?>
                         <div class="alert alert-danger mb-0">
                             <strong>Rejection Reason:</strong><br>
-                            <?php echo nl2br(htmlspecialchars($doc['rejection_reason'])); ?>
+                            <?php echo nl2br(htmlspecialchars($kyc_submission['rejection_reason'])); ?>
                         </div>
                         <?php endif; ?>
                     </div>
                     
                     <div class="col-md-4">
-                        <!-- Document Preview -->
-                        <div class="mb-3">
-                            <?php if (strpos($doc['mime_type'], 'image/') === 0): ?>
-                            <img src="<?php echo htmlspecialchars($doc['file_path']); ?>" 
-                                 class="document-preview" alt="Document">
-                            <?php else: ?>
-                            <div class="document-preview text-center p-4">
-                                <i class="fas fa-file fa-4x text-muted mb-2"></i>
-                                <p class="text-muted"><?php echo htmlspecialchars($doc['mime_type']); ?></p>
-                            </div>
-                            <?php endif; ?>
-                        </div>
-                        
                         <div class="d-grid gap-2">
-                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" 
-                               target="_blank" class="btn btn-outline-primary btn-sm">
-                                <i class="fas fa-download me-1"></i> Download
-                            </a>
-                            
-                            <?php if ($doc['status'] !== 'approved'): ?>
-                            <button type="button" class="btn btn-success btn-sm" 
-                                    onclick="verifyDocument(<?php echo $doc['id']; ?>, 'approved')">
-                                <i class="fas fa-check me-1"></i> Approve
+                            <?php if ($kyc_submission['verification_status'] !== 'approved'): ?>
+                            <button type="button" class="btn btn-success" 
+                                    onclick="updateStatus('approved')">
+                                <i class="fas fa-check me-1"></i> Approve KYC
                             </button>
                             <?php endif; ?>
                             
-                            <?php if ($doc['status'] !== 'rejected'): ?>
-                            <button type="button" class="btn btn-danger btn-sm" 
-                                    onclick="verifyDocument(<?php echo $doc['id']; ?>, 'rejected')">
-                                <i class="fas fa-times me-1"></i> Reject
+                            <?php if ($kyc_submission['verification_status'] !== 'rejected'): ?>
+                            <button type="button" class="btn btn-danger" 
+                                    onclick="updateStatus('rejected')">
+                                <i class="fas fa-times me-1"></i> Reject KYC
                             </button>
                             <?php endif; ?>
                             
-                            <?php if ($doc['status'] !== 'in_review'): ?>
-                            <button type="button" class="btn btn-info btn-sm" 
-                                    onclick="verifyDocument(<?php echo $doc['id']; ?>, 'in_review')">
+                            <?php if ($kyc_submission['verification_status'] !== 'in_review'): ?>
+                            <button type="button" class="btn btn-info" 
+                                    onclick="updateStatus('in_review')">
                                 <i class="fas fa-search me-1"></i> Mark In Review
                             </button>
                             <?php endif; ?>
                             
-                            <button type="button" class="btn btn-warning btn-sm" 
-                                    onclick="requestResubmission(<?php echo $doc['id']; ?>)">
+                            <button type="button" class="btn btn-warning" 
+                                    onclick="requestResubmission()">
                                 <i class="fas fa-redo me-1"></i> Request Resubmission
                             </button>
                         </div>
@@ -408,34 +369,131 @@ $page_title = 'KYC Management: ' . htmlspecialchars($vendor['business_name']);
                 </div>
             </div>
         </div>
-        <?php endforeach; ?>
+
+        <!-- Document Categories -->
+        <?php if (!empty($identity_docs)): ?>
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="fas fa-id-card me-2"></i>Identity Documents</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <?php foreach ($identity_docs as $key => $doc): ?>
+                    <div class="col-md-6 mb-3">
+                        <div class="border p-3 rounded">
+                            <strong><?php echo ucfirst(str_replace('_', ' ', $key)); ?></strong>
+                            <p class="mb-1 text-muted"><small><?php echo htmlspecialchars($doc['original_name'] ?? 'Document'); ?></small></p>
+                            <?php if (!empty($doc['document_number'])): ?>
+                            <p class="mb-1"><small>Number: <?php echo htmlspecialchars($doc['document_number']); ?></small></p>
+                            <?php endif; ?>
+                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                                <i class="fas fa-eye me-1"></i> View
+                            </a>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($address_docs)): ?>
+        <div class="card mb-3">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Address Verification</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <?php foreach ($address_docs as $key => $doc): ?>
+                    <div class="col-md-6 mb-3">
+                        <div class="border p-3 rounded">
+                            <strong><?php echo ucfirst(str_replace('_', ' ', $key)); ?></strong>
+                            <p class="mb-1 text-muted"><small><?php echo htmlspecialchars($doc['original_name'] ?? 'Document'); ?></small></p>
+                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                                <i class="fas fa-eye me-1"></i> View
+                            </a>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($bank_docs)): ?>
+        <div class="card mb-3">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0"><i class="fas fa-university me-2"></i>Bank Verification</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <?php foreach ($bank_docs as $key => $doc): ?>
+                    <div class="col-md-6 mb-3">
+                        <div class="border p-3 rounded">
+                            <strong><?php echo ucfirst(str_replace('_', ' ', $key)); ?></strong>
+                            <p class="mb-1 text-muted"><small><?php echo htmlspecialchars($doc['original_name'] ?? 'Document'); ?></small></p>
+                            <?php if (!empty($doc['account_number'])): ?>
+                            <p class="mb-1"><small>Account: ****<?php echo htmlspecialchars($doc['account_number']); ?></small></p>
+                            <?php endif; ?>
+                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                                <i class="fas fa-eye me-1"></i> View
+                            </a>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($business_docs)): ?>
+        <div class="card mb-3">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0"><i class="fas fa-briefcase me-2"></i>Business Documents</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <?php foreach ($business_docs as $key => $doc): ?>
+                    <div class="col-md-6 mb-3">
+                        <div class="border p-3 rounded">
+                            <strong><?php echo ucfirst(str_replace('_', ' ', $key)); ?></strong>
+                            <p class="mb-1 text-muted"><small><?php echo htmlspecialchars($doc['original_name'] ?? 'Document'); ?></small></p>
+                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                                <i class="fas fa-eye me-1"></i> View
+                            </a>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
         <?php endif; ?>
     </div>
 
-    <!-- Verification Modal -->
-    <div class="modal fade" id="verifyModal" tabindex="-1">
+    <!-- Status Update Modal -->
+    <div class="modal fade" id="statusModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
                 <form method="POST">
                     <?php echo csrfTokenInput(); ?>
-                    <input type="hidden" name="action" value="verify_document">
-                    <input type="hidden" name="document_id" id="verifyDocId">
-                    <input type="hidden" name="status" id="verifyStatus">
+                    <input type="hidden" name="action" value="update_status">
+                    <input type="hidden" name="status" id="newStatus">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="verifyModalLabel">Verify Document</h5>
+                        <h5 class="modal-title" id="statusModalLabel">Update KYC Status</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <p id="verifyMessage"></p>
+                        <p id="statusMessage"></p>
                         <div class="mb-3">
-                            <label class="form-label">Remarks</label>
-                            <textarea class="form-control" name="remarks" rows="4" 
-                                      placeholder="Add any remarks or notes about this document..."></textarea>
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="notes" rows="4" 
+                                      placeholder="Add any notes about this status change..."></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary" id="verifyBtn">Confirm</button>
+                        <button type="submit" class="btn btn-primary" id="statusBtn">Confirm</button>
                     </div>
                 </form>
             </div>
@@ -449,9 +507,8 @@ $page_title = 'KYC Management: ' . htmlspecialchars($vendor['business_name']);
                 <form method="POST">
                     <?php echo csrfTokenInput(); ?>
                     <input type="hidden" name="action" value="request_resubmission">
-                    <input type="hidden" name="document_id" id="resubmitDocId">
                     <div class="modal-header">
-                        <h5 class="modal-title">Request Document Resubmission</h5>
+                        <h5 class="modal-title">Request KYC Resubmission</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
@@ -472,37 +529,35 @@ $page_title = 'KYC Management: ' . htmlspecialchars($vendor['business_name']);
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const verifyModal = new bootstrap.Modal(document.getElementById('verifyModal'));
+        const statusModal = new bootstrap.Modal(document.getElementById('statusModal'));
         const resubmitModal = new bootstrap.Modal(document.getElementById('resubmitModal'));
 
-        function verifyDocument(docId, status) {
-            document.getElementById('verifyDocId').value = docId;
-            document.getElementById('verifyStatus').value = status;
+        function updateStatus(status) {
+            document.getElementById('newStatus').value = status;
             
             let message = '';
             let btnClass = 'btn-primary';
             
             if (status === 'approved') {
-                message = 'Are you sure you want to approve this document?';
+                message = 'Are you sure you want to approve this KYC submission?';
                 btnClass = 'btn-success';
             } else if (status === 'rejected') {
-                message = 'Are you sure you want to reject this document?';
+                message = 'Are you sure you want to reject this KYC submission?';
                 btnClass = 'btn-danger';
             } else if (status === 'in_review') {
-                message = 'Mark this document as being in review?';
+                message = 'Mark this KYC submission as being in review?';
                 btnClass = 'btn-info';
             }
             
-            document.getElementById('verifyMessage').textContent = message;
-            document.getElementById('verifyBtn').className = 'btn ' + btnClass;
-            document.getElementById('verifyModalLabel').textContent = 
-                status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ') + ' Document';
+            document.getElementById('statusMessage').textContent = message;
+            document.getElementById('statusBtn').className = 'btn ' + btnClass;
+            document.getElementById('statusModalLabel').textContent = 
+                status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ') + ' KYC';
             
-            verifyModal.show();
+            statusModal.show();
         }
 
-        function requestResubmission(docId) {
-            document.getElementById('resubmitDocId').value = docId;
+        function requestResubmission() {
             resubmitModal.show();
         }
     </script>

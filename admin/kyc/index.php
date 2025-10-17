@@ -218,8 +218,8 @@ try {
                        CONCAT('Multiple documents') as file_path, 
                        'Seller KYC Submission' as original_filename,
                        0 as file_size, 'application/json' as mime_type,
-                       sk.status, sk.submitted_at as uploaded_at, sk.verified_by as reviewed_by,
-                       sk.verified_at as reviewed_at, sk.rejection_reason as review_notes,
+                       sk.verification_status as status, sk.submitted_at as uploaded_at, sk.verified_by as reviewed_by,
+                       sk.verified_at as reviewed_at, sk.verification_notes as review_notes,
                        u.username, u.email, u.first_name, u.last_name,
                        verifier.username as reviewer_name,
                        'seller' as kyc_type
@@ -293,28 +293,28 @@ try {
         $stmt = $pdo->query("
             SELECT 
                 (SELECT COUNT(*) FROM kyc_documents WHERE status = 'pending') + 
-                (SELECT COUNT(*) FROM seller_kyc WHERE status = 'pending') as pending
+                (SELECT COUNT(*) FROM seller_kyc WHERE verification_status = 'pending') as pending
         ");
         $stats['pending'] = $stmt->fetchColumn();
         
         $stmt = $pdo->query("
             SELECT 
                 (SELECT COUNT(*) FROM kyc_documents WHERE status = 'approved') + 
-                (SELECT COUNT(*) FROM seller_kyc WHERE status = 'approved') as approved
+                (SELECT COUNT(*) FROM seller_kyc WHERE verification_status = 'approved') as approved
         ");
         $stats['approved'] = $stmt->fetchColumn();
         
         $stmt = $pdo->query("
             SELECT 
                 (SELECT COUNT(*) FROM kyc_documents WHERE status = 'rejected') + 
-                (SELECT COUNT(*) FROM seller_kyc WHERE status = 'rejected') as rejected
+                (SELECT COUNT(*) FROM seller_kyc WHERE verification_status = 'rejected') as rejected
         ");
         $stats['rejected'] = $stmt->fetchColumn();
         
         $stmt = $pdo->query("
             SELECT 
                 (SELECT COUNT(*) FROM kyc_documents WHERE status = 'expired') + 
-                (SELECT COUNT(*) FROM seller_kyc WHERE status = 'expired') as expired
+                (SELECT COUNT(*) FROM seller_kyc WHERE verification_status = 'expired') as expired
         ");
         $stats['expired'] = $stmt->fetchColumn();
         
