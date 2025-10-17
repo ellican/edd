@@ -158,6 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Get KYC documents with filtering
 $filter = $_GET['filter'] ?? 'all';
 $search = $_GET['search'] ?? '';
+$type_filter = $_GET['type'] ?? 'all'; // New filter: 'all', 'user', 'seller'
 $page = max(1, intval($_GET['page'] ?? 1));
 $limit = 25;
 $offset = ($page - 1) * $limit;
@@ -175,57 +176,146 @@ try {
     $params = [];
         
         if ($filter !== 'all') {
-            $whereConditions[] = "kd.status = ?";
+            $whereConditions[] = "status = ?";
             $params[] = $filter;
         }
         
         if (!empty($search)) {
-            $whereConditions[] = "(u.username LIKE ? OR u.email LIKE ? OR kd.document_type LIKE ?)";
+            $whereConditions[] = "(username LIKE ? OR email LIKE ? OR document_type LIKE ?)";
             $searchTerm = "%$search%";
             $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm]);
         }
         
         $whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
         
-        // Get documents
-        $stmt = $pdo->prepare("
-            SELECT kd.*, u.username, u.email, u.first_name, u.last_name,
-                   reviewer.username as reviewer_name
-            FROM kyc_documents kd
-            JOIN users u ON kd.user_id = u.id
-            LEFT JOIN users reviewer ON kd.reviewed_by = reviewer.id
-            {$whereClause}
-            ORDER BY kd.uploaded_at DESC
-            LIMIT {$limit} OFFSET {$offset}
-        ");
-        $stmt->execute($params);
-        $documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Combine both user KYC documents and seller KYC documents
+        $documentsQuery = "";
+        
+        if ($type_filter === 'all' || $type_filter === 'user') {
+            // Get user KYC documents
+            $documentsQuery .= "
+                SELECT kd.id, kd.user_id, kd.document_type, kd.file_path, kd.original_filename, 
+                       kd.file_size, kd.mime_type, kd.status, kd.uploaded_at, kd.reviewed_by, 
+                       kd.reviewed_at, kd.review_notes,
+                       u.username, u.email, u.first_name, u.last_name,
+                       reviewer.username as reviewer_name,
+                       'user' as kyc_type
+                FROM kyc_documents kd
+                JOIN users u ON kd.user_id = u.id
+                LEFT JOIN users reviewer ON kd.reviewed_by = reviewer.id
+                " . ($whereClause ? $whereClause : "") . "
+            ";
+        }
+        
+        if ($type_filter === 'all' || $type_filter === 'seller') {
+            if (!empty($documentsQuery)) {
+                $documentsQuery .= " UNION ALL ";
+            }
+            
+            // Get seller KYC documents
+            $documentsQuery .= "
+                SELECT sk.id, v.user_id, sk.verification_type as document_type, 
+                       CONCAT('Multiple documents') as file_path, 
+                       'Seller KYC Submission' as original_filename,
+                       0 as file_size, 'application/json' as mime_type,
+                       sk.status, sk.submitted_at as uploaded_at, sk.verified_by as reviewed_by,
+                       sk.verified_at as reviewed_at, sk.rejection_reason as review_notes,
+                       u.username, u.email, u.first_name, u.last_name,
+                       verifier.username as reviewer_name,
+                       'seller' as kyc_type
+                FROM seller_kyc sk
+                JOIN vendors v ON sk.vendor_id = v.id
+                JOIN users u ON v.user_id = u.id
+                LEFT JOIN users verifier ON sk.verified_by = verifier.id
+                " . ($whereClause ? $whereClause : "") . "
+            ";
+        }
+        
+        // Execute combined query
+        if (!empty($documentsQuery)) {
+            $stmt = $pdo->prepare("
+                {$documentsQuery}
+                ORDER BY uploaded_at DESC
+                LIMIT {$limit} OFFSET {$offset}
+            ");
+            
+            // Execute with doubled params if combining both queries
+            if ($type_filter === 'all' && !empty($params)) {
+                $stmt->execute(array_merge($params, $params));
+            } else {
+                $stmt->execute($params);
+            }
+            $documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
         
         // Get total count
-        $stmt = $pdo->prepare("
-            SELECT COUNT(*)
-            FROM kyc_documents kd
-            JOIN users u ON kd.user_id = u.id
-            {$whereClause}
-        ");
-        $stmt->execute($params);
-        $totalDocuments = $stmt->fetchColumn();
+        $countQuery = "";
+        if ($type_filter === 'all' || $type_filter === 'user') {
+            $countQuery .= "
+                SELECT COUNT(*) as cnt
+                FROM kyc_documents kd
+                JOIN users u ON kd.user_id = u.id
+                " . ($whereClause ? $whereClause : "") . "
+            ";
+        }
+        
+        if ($type_filter === 'all' || $type_filter === 'seller') {
+            if (!empty($countQuery)) {
+                $countQuery .= " UNION ALL ";
+            }
+            $countQuery .= "
+                SELECT COUNT(*) as cnt
+                FROM seller_kyc sk
+                JOIN vendors v ON sk.vendor_id = v.id
+                JOIN users u ON v.user_id = u.id
+                " . ($whereClause ? $whereClause : "") . "
+            ";
+        }
+        
+        if (!empty($countQuery)) {
+            $stmt = $pdo->prepare("SELECT SUM(cnt) as total FROM ({$countQuery}) as counts");
+            if ($type_filter === 'all' && !empty($params)) {
+                $stmt->execute(array_merge($params, $params));
+            } else {
+                $stmt->execute($params);
+            }
+            $totalDocuments = $stmt->fetchColumn() ?: 0;
+        }
         $totalPages = ceil($totalDocuments / $limit);
         
-        // Get statistics
-        $stmt = $pdo->query("SELECT COUNT(*) FROM kyc_documents");
+        // Get statistics - combine both tables
+        $stmt = $pdo->query("
+            SELECT 
+                (SELECT COUNT(*) FROM kyc_documents) + (SELECT COUNT(*) FROM seller_kyc) as total
+        ");
         $stats['total'] = $stmt->fetchColumn();
         
-        $stmt = $pdo->query("SELECT COUNT(*) FROM kyc_documents WHERE status = 'pending'");
+        $stmt = $pdo->query("
+            SELECT 
+                (SELECT COUNT(*) FROM kyc_documents WHERE status = 'pending') + 
+                (SELECT COUNT(*) FROM seller_kyc WHERE status = 'pending') as pending
+        ");
         $stats['pending'] = $stmt->fetchColumn();
         
-        $stmt = $pdo->query("SELECT COUNT(*) FROM kyc_documents WHERE status = 'approved'");
+        $stmt = $pdo->query("
+            SELECT 
+                (SELECT COUNT(*) FROM kyc_documents WHERE status = 'approved') + 
+                (SELECT COUNT(*) FROM seller_kyc WHERE status = 'approved') as approved
+        ");
         $stats['approved'] = $stmt->fetchColumn();
         
-        $stmt = $pdo->query("SELECT COUNT(*) FROM kyc_documents WHERE status = 'rejected'");
+        $stmt = $pdo->query("
+            SELECT 
+                (SELECT COUNT(*) FROM kyc_documents WHERE status = 'rejected') + 
+                (SELECT COUNT(*) FROM seller_kyc WHERE status = 'rejected') as rejected
+        ");
         $stats['rejected'] = $stmt->fetchColumn();
         
-        $stmt = $pdo->query("SELECT COUNT(*) FROM kyc_documents WHERE status = 'expired'");
+        $stmt = $pdo->query("
+            SELECT 
+                (SELECT COUNT(*) FROM kyc_documents WHERE status = 'expired') + 
+                (SELECT COUNT(*) FROM seller_kyc WHERE status = 'expired') as expired
+        ");
         $stats['expired'] = $stmt->fetchColumn();
         
         // Try to get verified users, fallback if table doesn't exist
@@ -440,9 +530,10 @@ if ($action === 'review' && $document_id) {
 
         <!-- Filters and Search -->
         <div class="dashboard-card mb-4">
-            <div class="row align-items-center">
+            <div class="row align-items-center mb-3">
                 <div class="col-md-3">
-                    <select class="form-select" onchange="updateFilter(this.value)">
+                    <label class="form-label mb-1"><small>Status Filter</small></label>
+                    <select class="form-select" onchange="updateFilter(this.value, 'status')">
                         <option value="all" <?php echo $filter === 'all' ? 'selected' : ''; ?>>All Status</option>
                         <option value="pending" <?php echo $filter === 'pending' ? 'selected' : ''; ?>>Pending Review</option>
                         <option value="approved" <?php echo $filter === 'approved' ? 'selected' : ''; ?>>Approved</option>
@@ -450,18 +541,28 @@ if ($action === 'review' && $document_id) {
                         <option value="expired" <?php echo $filter === 'expired' ? 'selected' : ''; ?>>Expired</option>
                     </select>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-3">
+                    <label class="form-label mb-1"><small>Type Filter</small></label>
+                    <select class="form-select" onchange="updateFilter(this.value, 'type')">
+                        <option value="all" <?php echo $type_filter === 'all' ? 'selected' : ''; ?>>All Types</option>
+                        <option value="user" <?php echo $type_filter === 'user' ? 'selected' : ''; ?>>User KYC</option>
+                        <option value="seller" <?php echo $type_filter === 'seller' ? 'selected' : ''; ?>>Seller KYC</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label mb-1"><small>Search</small></label>
                     <form method="GET" class="d-flex">
                         <input type="hidden" name="filter" value="<?php echo htmlspecialchars($filter); ?>">
+                        <input type="hidden" name="type" value="<?php echo htmlspecialchars($type_filter); ?>">
                         <input type="text" class="form-control" name="search" 
-                               placeholder="Search by user, email, or document type..." 
+                               placeholder="User, email, type..." 
                                value="<?php echo htmlspecialchars($search); ?>">
                         <button type="submit" class="btn btn-outline-primary ms-2">
                             <i class="fas fa-search"></i>
                         </button>
                     </form>
                 </div>
-                <div class="col-md-3 text-end">
+                <div class="col-md-3 text-end" style="padding-top: 22px;">
                     <button class="btn btn-outline-success" onclick="exportKycData()">
                         <i class="fas fa-download me-1"></i>Export
                     </button>
@@ -503,6 +604,7 @@ if ($action === 'review' && $document_id) {
                         <thead>
                             <tr>
                                 <th><input type="checkbox" class="select-all"></th>
+                                <th>Type</th>
                                 <th>User</th>
                                 <th>Document Type</th>
                                 <th>Status</th>
@@ -516,6 +618,13 @@ if ($action === 'review' && $document_id) {
                             <tr>
                                 <td>
                                     <input type="checkbox" class="item-select" name="selected_items[]" value="<?php echo $document['id']; ?>">
+                                </td>
+                                <td>
+                                    <?php if (($document['kyc_type'] ?? 'user') === 'seller'): ?>
+                                        <span class="badge bg-warning text-dark"><i class="fas fa-store"></i> Seller</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-info"><i class="fas fa-user"></i> User</span>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <strong><?php echo htmlspecialchars($document['username'] ?? 'Unknown'); ?></strong><br>
@@ -548,9 +657,15 @@ if ($action === 'review' && $document_id) {
                                     <?php endif; ?>
                                 </td>
                                 <td class="table-actions">
-                                    <a href="?action=review&id=<?php echo $document['id']; ?>" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-eye"></i> Review
-                                    </a>
+                                    <?php if (($document['kyc_type'] ?? 'user') === 'seller'): ?>
+                                        <a href="/admin/kyc/view.php?id=<?php echo $document['id']; ?>" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i> Review
+                                        </a>
+                                    <?php else: ?>
+                                        <a href="?action=review&id=<?php echo $document['id']; ?>" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i> Review
+                                        </a>
+                                    <?php endif; ?>
                                     <?php if (($document['status'] ?? 'pending') === 'pending'): ?>
                                         <?php if (hasPermission('kyc.approve')): ?>
                                         <button type="button" class="btn btn-sm btn-outline-success" 
@@ -579,7 +694,7 @@ if ($action === 'review' && $document_id) {
                 <ul class="pagination justify-content-center">
                     <?php for ($i = 1; $i <= $totalPages; $i++): ?>
                     <li class="page-item <?php echo $page === $i ? 'active' : ''; ?>">
-                        <a class="page-link" href="?page=<?php echo $i; ?>&filter=<?php echo $filter; ?>&search=<?php echo urlencode($search); ?>"><?php echo $i; ?></a>
+                        <a class="page-link" href="?page=<?php echo $i; ?>&filter=<?php echo $filter; ?>&type=<?php echo $type_filter; ?>&search=<?php echo urlencode($search); ?>"><?php echo $i; ?></a>
                     </li>
                     <?php endfor; ?>
                 </ul>
@@ -716,9 +831,13 @@ if ($action === 'review' && $document_id) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
-    function updateFilter(value) {
+    function updateFilter(value, filterType) {
         const url = new URL(window.location);
-        url.searchParams.set("filter", value);
+        if (filterType === 'status') {
+            url.searchParams.set("filter", value);
+        } else if (filterType === 'type') {
+            url.searchParams.set("type", value);
+        }
         url.searchParams.delete("page");
         window.location = url;
     }
