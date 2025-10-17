@@ -133,9 +133,14 @@ $page_title = 'KYC Review - ' . ($kyc['business_name'] ?: $kyc['first_name'] . '
                                                 <div class="document-file">
                                                     <i class="file-icon">📄</i>
                                                     <span><?php echo htmlspecialchars($doc_info['original_name'] ?? basename($doc_info['file_path'])); ?></span>
-                                                    <a href="<?php echo htmlspecialchars($doc_info['file_path']); ?>" target="_blank" class="btn btn-sm btn-primary">Download</a>
                                                 </div>
                                             <?php endif; ?>
+                                            <div class="mt-2">
+                                                <a href="/admin/kyc/download.php?id=<?php echo $kyc['id']; ?>&type=seller&doc_category=identity&doc_type=<?php echo urlencode($doc_type); ?>" 
+                                                   class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-download"></i> Download
+                                                </a>
+                                            </div>
                                         </div>
                                     <?php else: ?>
                                         <div class="document-missing">
@@ -178,9 +183,14 @@ $page_title = 'KYC Review - ' . ($kyc['business_name'] ?: $kyc['first_name'] . '
                                             <div class="document-file">
                                                 <i class="file-icon">📄</i>
                                                 <span><?php echo htmlspecialchars($doc_info['original_name'] ?? basename($doc_info['file_path'])); ?></span>
-                                                <a href="<?php echo htmlspecialchars($doc_info['file_path']); ?>" target="_blank" class="btn btn-sm btn-primary">Download</a>
                                             </div>
                                         <?php endif; ?>
+                                        <div class="mt-2">
+                                            <a href="/admin/kyc/download.php?id=<?php echo $kyc['id']; ?>&type=seller&doc_category=address&doc_type=<?php echo urlencode($doc_type); ?>" 
+                                               class="btn btn-sm btn-primary">
+                                                <i class="fas fa-download"></i> Download
+                                            </a>
+                                        </div>
                                     </div>
                                 <?php endif; ?>
                             </div>
@@ -211,9 +221,14 @@ $page_title = 'KYC Review - ' . ($kyc['business_name'] ?: $kyc['first_name'] . '
                                             <div class="document-file">
                                                 <i class="file-icon">📄</i>
                                                 <span><?php echo htmlspecialchars($doc_info['original_name'] ?? basename($doc_info['file_path'])); ?></span>
-                                                <a href="<?php echo htmlspecialchars($doc_info['file_path']); ?>" target="_blank" class="btn btn-sm btn-primary">Download</a>
                                             </div>
                                         <?php endif; ?>
+                                        <div class="mt-2">
+                                            <a href="/admin/kyc/download.php?id=<?php echo $kyc['id']; ?>&type=seller&doc_category=bank&doc_type=<?php echo urlencode($doc_type); ?>" 
+                                               class="btn btn-sm btn-primary">
+                                                <i class="fas fa-download"></i> Download
+                                            </a>
+                                        </div>
                                     </div>
                                 <?php endif; ?>
                                 
