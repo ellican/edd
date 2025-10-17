@@ -111,28 +111,21 @@ class EnhancedEmailSystem {
     }
     
     /**
-     * Enhanced SMTP email sending
+     * Enhanced SMTP email sending using RobustEmailService
      */
     private function sendEmail($to, $subject, $body, $isHtml = true, $userId = null, $type = 'general') {
         try {
             // Log email attempt
             $this->logEmailAttempt($to, $subject, $type, $userId);
             
-            // Create proper email headers
-            $headers = [
-                'MIME-Version: 1.0',
-                'Content-Type: ' . ($isHtml ? 'text/html' : 'text/plain') . '; charset=UTF-8',
-                'From: ' . $this->config['from_name'] . ' <' . $this->config['from_email'] . '>',
-                'Reply-To: ' . $this->config['from_email'],
-                'X-Mailer: ' . APP_NAME . ' Mailer',
-                'X-Priority: 3',
-                'Message-ID: <' . uniqid() . '@' . parse_url(APP_URL, PHP_URL_HOST) . '>',
-                'Date: ' . date('r')
-            ];
+            // Use RobustEmailService for reliable SMTP delivery
+            require_once __DIR__ . '/RobustEmailService.php';
+            $emailService = new RobustEmailService();
             
-            // Use PHP's mail() function with proper headers for VPS delivery
-            $headerString = implode("\r\n", $headers);
-            $success = mail($to, $subject, $body, $headerString);
+            $success = $emailService->sendEmail($to, $subject, $body, [
+                'user_id' => $userId,
+                'alt_body' => $isHtml ? strip_tags($body) : null
+            ]);
             
             if ($success) {
                 $this->updateEmailStatus($to, $subject, 'sent');

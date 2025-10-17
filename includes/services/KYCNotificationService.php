@@ -206,20 +206,21 @@ class KYCNotificationService {
     }
     
     /**
-     * Send email
+     * Send email using RobustEmailService
      */
     private function sendEmail($to, $subject, $message) {
-        // Use existing email system if available
-        if (function_exists('sendHTMLEmail')) {
-            return sendHTMLEmail($to, $subject, $message);
+        try {
+            // Use RobustEmailService for reliable SMTP delivery
+            require_once __DIR__ . '/../RobustEmailService.php';
+            $emailService = new RobustEmailService();
+            
+            return $emailService->sendEmail($to, $subject, $message, [
+                'alt_body' => strip_tags($message)
+            ]);
+        } catch (Exception $e) {
+            error_log("KYC email sending failed: " . $e->getMessage());
+            return false;
         }
-        
-        // Fallback to basic mail
-        $headers = "MIME-Version: 1.0" . "\r\n";
-        $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-        $headers .= "From: noreply@" . ($_SERVER['HTTP_HOST'] ?? 'example.com') . "\r\n";
-        
-        return mail($to, $subject, $message, $headers);
     }
     
     /**
