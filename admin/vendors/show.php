@@ -64,7 +64,7 @@ try {
     
     // Get KYC documents
     $kyc_docs = Database::query(
-        "SELECT * FROM vendor_kyc WHERE vendor_id = ? ORDER BY uploaded_at DESC",
+        "SELECT * FROM seller_kyc WHERE vendor_id = ? ORDER BY submitted_at DESC",
         [$vendor_id]
     )->fetchAll();
     

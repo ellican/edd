@@ -171,22 +171,26 @@ $stats = [
 ];
 
 try {
-    // Build WHERE clause for filters
-    $whereConditions = [];
+    // Build WHERE clause for filters - need separate clauses for each table
+    $userWhereConditions = [];
+    $sellerWhereConditions = [];
     $params = [];
         
         if ($filter !== 'all') {
-            $whereConditions[] = "status = ?";
+            $userWhereConditions[] = "kd.status = ?";
+            $sellerWhereConditions[] = "sk.verification_status = ?";
             $params[] = $filter;
         }
         
         if (!empty($search)) {
-            $whereConditions[] = "(username LIKE ? OR email LIKE ? OR document_type LIKE ?)";
+            $userWhereConditions[] = "(u.username LIKE ? OR u.email LIKE ? OR kd.document_type LIKE ?)";
+            $sellerWhereConditions[] = "(u.username LIKE ? OR u.email LIKE ? OR sk.verification_type LIKE ?)";
             $searchTerm = "%$search%";
             $params = array_merge($params, [$searchTerm, $searchTerm, $searchTerm]);
         }
         
-        $whereClause = !empty($whereConditions) ? "WHERE " . implode(" AND ", $whereConditions) : "";
+        $userWhereClause = !empty($userWhereConditions) ? "WHERE " . implode(" AND ", $userWhereConditions) : "";
+        $sellerWhereClause = !empty($sellerWhereConditions) ? "WHERE " . implode(" AND ", $sellerWhereConditions) : "";
         
         // Combine both user KYC documents and seller KYC documents
         $documentsQuery = "";
@@ -203,7 +207,7 @@ try {
                 FROM kyc_documents kd
                 JOIN users u ON kd.user_id = u.id
                 LEFT JOIN users reviewer ON kd.reviewed_by = reviewer.id
-                " . ($whereClause ? $whereClause : "") . "
+                " . $userWhereClause . "
             ";
         }
         
@@ -218,8 +222,8 @@ try {
                        CONCAT('Multiple documents') as file_path, 
                        'Seller KYC Submission' as original_filename,
                        0 as file_size, 'application/json' as mime_type,
-                       sk.status, sk.submitted_at as uploaded_at, sk.verified_by as reviewed_by,
-                       sk.verified_at as reviewed_at, sk.rejection_reason as review_notes,
+                       sk.verification_status as status, sk.submitted_at as uploaded_at, sk.verified_by as reviewed_by,
+                       sk.verified_at as reviewed_at, sk.verification_notes as review_notes,
                        u.username, u.email, u.first_name, u.last_name,
                        verifier.username as reviewer_name,
                        'seller' as kyc_type
@@ -227,7 +231,7 @@ try {
                 JOIN vendors v ON sk.vendor_id = v.id
                 JOIN users u ON v.user_id = u.id
                 LEFT JOIN users verifier ON sk.verified_by = verifier.id
-                " . ($whereClause ? $whereClause : "") . "
+                " . $sellerWhereClause . "
             ";
         }
         
@@ -255,7 +259,7 @@ try {
                 SELECT COUNT(*) as cnt
                 FROM kyc_documents kd
                 JOIN users u ON kd.user_id = u.id
-                " . ($whereClause ? $whereClause : "") . "
+                " . $userWhereClause . "
             ";
         }
         
@@ -268,7 +272,7 @@ try {
                 FROM seller_kyc sk
                 JOIN vendors v ON sk.vendor_id = v.id
                 JOIN users u ON v.user_id = u.id
-                " . ($whereClause ? $whereClause : "") . "
+                " . $sellerWhereClause . "
             ";
         }
         
@@ -293,28 +297,28 @@ try {
         $stmt = $pdo->query("
             SELECT 
                 (SELECT COUNT(*) FROM kyc_documents WHERE status = 'pending') + 
-                (SELECT COUNT(*) FROM seller_kyc WHERE status = 'pending') as pending
+                (SELECT COUNT(*) FROM seller_kyc WHERE verification_status = 'pending') as pending
         ");
         $stats['pending'] = $stmt->fetchColumn();
         
         $stmt = $pdo->query("
             SELECT 
                 (SELECT COUNT(*) FROM kyc_documents WHERE status = 'approved') + 
-                (SELECT COUNT(*) FROM seller_kyc WHERE status = 'approved') as approved
+                (SELECT COUNT(*) FROM seller_kyc WHERE verification_status = 'approved') as approved
         ");
         $stats['approved'] = $stmt->fetchColumn();
         
         $stmt = $pdo->query("
             SELECT 
                 (SELECT COUNT(*) FROM kyc_documents WHERE status = 'rejected') + 
-                (SELECT COUNT(*) FROM seller_kyc WHERE status = 'rejected') as rejected
+                (SELECT COUNT(*) FROM seller_kyc WHERE verification_status = 'rejected') as rejected
         ");
         $stats['rejected'] = $stmt->fetchColumn();
         
         $stmt = $pdo->query("
             SELECT 
                 (SELECT COUNT(*) FROM kyc_documents WHERE status = 'expired') + 
-                (SELECT COUNT(*) FROM seller_kyc WHERE status = 'expired') as expired
+                (SELECT COUNT(*) FROM seller_kyc WHERE verification_status = 'expired') as expired
         ");
         $stats['expired'] = $stmt->fetchColumn();
         
