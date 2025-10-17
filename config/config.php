@@ -97,6 +97,12 @@ define('MAIL_FROM_NAME', env('MAIL_FROM_NAME', APP_NAME));
 define('SUPPORT_EMAIL', env('SUPPORT_EMAIL', 'support@fezamarket.com'));
 define('FROM_NAME', env('FROM_NAME', APP_NAME));
 
+// DKIM Settings for email authentication (optional but recommended)
+define('DKIM_DOMAIN', env('DKIM_DOMAIN', ''));
+define('DKIM_SELECTOR', env('DKIM_SELECTOR', 'default'));
+define('DKIM_PRIVATE_KEY', env('DKIM_PRIVATE_KEY', ''));
+define('DKIM_PASSPHRASE', env('DKIM_PASSPHRASE', ''));
+
 // Payment gateway settings
 define('PAYMENT_GATEWAY', env('PAYMENT_GATEWAY', 'stripe'));
 
