@@ -5842,6 +5842,7 @@ CREATE TABLE `live_streams` (
   `description` text DEFAULT NULL,
   `thumbnail_url` varchar(255) DEFAULT NULL,
   `stream_url` varchar(500) DEFAULT NULL,
+  `video_path` varchar(500) DEFAULT NULL COMMENT 'Path to saved stream video/replay',
   `chat_enabled` tinyint(1) NOT NULL DEFAULT 1,
   `recording_enabled` tinyint(1) NOT NULL DEFAULT 0,
   `recording_url` varchar(500) DEFAULT NULL,
@@ -5849,9 +5850,12 @@ CREATE TABLE `live_streams` (
   `category_id` int(11) DEFAULT NULL,
   `tags` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`tags`)),
   `settings` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`settings`)),
-  `status` enum('scheduled','live','ended','cancelled') NOT NULL DEFAULT 'scheduled',
+  `status` enum('scheduled','live','ended','archived','cancelled') NOT NULL DEFAULT 'scheduled',
   `viewer_count` int(11) NOT NULL DEFAULT 0,
   `max_viewers` int(11) NOT NULL DEFAULT 0,
+  `like_count` int(11) unsigned NOT NULL DEFAULT 0 COMMENT 'Total likes for the stream',
+  `dislike_count` int(11) unsigned NOT NULL DEFAULT 0 COMMENT 'Total dislikes for the stream',
+  `comment_count` int(11) unsigned NOT NULL DEFAULT 0 COMMENT 'Total comments for the stream',
   `revenue` decimal(10,2) NOT NULL DEFAULT 0.00,
   `total_revenue` decimal(10,2) NOT NULL DEFAULT 0.00,
   `scheduled_at` timestamp NULL DEFAULT NULL,
@@ -5867,6 +5871,7 @@ CREATE TABLE `live_streams` (
   KEY `idx_started_at` (`started_at`),
   KEY `idx_viewer_count` (`viewer_count`),
   KEY `idx_live_streams_status_scheduled` (`status`,`scheduled_at`),
+  KEY `idx_status_ended` (`status`,`ended_at`),
   CONSTRAINT `fk_live_streams_vendor` FOREIGN KEY (`vendor_id`) REFERENCES `vendors` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
