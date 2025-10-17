@@ -33,17 +33,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $db->prepare("INSERT INTO account_closure_requests (user_id, reason, additional_comments, status) VALUES (?, ?, ?, 'pending')");
                 $stmt->execute([Session::getUserId(), $reason, $additional_comments]);
                 
-                // Send notification email to admin
-                $adminEmail = defined('SUPPORT_EMAIL') ? SUPPORT_EMAIL : 'admin@fezamarket.com';
-                $fromEmail = defined('MAIL_FROM_ADDRESS') ? MAIL_FROM_ADDRESS : 'no-reply@fezamarket.com';
-                $subject = "Account Closure Request - User ID: " . Session::getUserId();
-                $message = "A user has requested to close their account.\n\n";
-                $message .= "User: {$userInfo['first_name']} {$userInfo['last_name']} ({$userInfo['email']})\n";
-                $message .= "Reason: {$reason}\n";
-                $message .= "Comments: {$additional_comments}\n\n";
-                $message .= "Please review this request in the admin panel.";
+                // Send notification email to admin using RobustEmailService
+                require_once __DIR__ . '/includes/RobustEmailService.php';
+                $emailService = new RobustEmailService();
                 
-                @mail($adminEmail, $subject, $message, "From: {$fromEmail}");
+                $adminEmail = defined('SUPPORT_EMAIL') ? SUPPORT_EMAIL : 'admin@fezamarket.com';
+                $subject = "Account Closure Request - User ID: " . Session::getUserId();
+                
+                // Create HTML email body
+                $message = "
+                <!DOCTYPE html>
+                <html>
+                <head><meta charset='UTF-8'><title>Account Closure Request</title></head>
+                <body style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>
+                    <h1 style='color: #dc3545;'>Account Closure Request</h1>
+                    <p>A user has requested to close their account.</p>
+                    <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+                        <tr><td style='padding: 10px; border-bottom: 1px solid #eee;'><strong>User:</strong></td>
+                            <td style='padding: 10px; border-bottom: 1px solid #eee;'>{$userInfo['first_name']} {$userInfo['last_name']} ({$userInfo['email']})</td></tr>
+                        <tr><td style='padding: 10px; border-bottom: 1px solid #eee;'><strong>Reason:</strong></td>
+                            <td style='padding: 10px; border-bottom: 1px solid #eee;'>{$reason}</td></tr>
+                        <tr><td style='padding: 10px; border-bottom: 1px solid #eee;'><strong>Comments:</strong></td>
+                            <td style='padding: 10px; border-bottom: 1px solid #eee;'>{$additional_comments}</td></tr>
+                    </table>
+                    <p>Please review this request in the admin panel.</p>
+                </body>
+                </html>";
+                
+                try {
+                    $emailService->sendEmail($adminEmail, $subject, $message, ['priority' => 1]);
+                } catch (Exception $e) {
+                    error_log("Failed to send account closure notification: " . $e->getMessage());
+                }
                 
                 $success = 'Your account closure request has been submitted. Our team will review it within 1-2 business days and contact you via email.';
             } catch (Exception $e) {

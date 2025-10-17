@@ -5,27 +5,24 @@
  */
 
 /**
- * Send admin notification email
+ * Send admin notification email using RobustEmailService
  */
 function sendAdminNotification($to, $subject, $message, $priority = 'normal') {
     try {
-        // Use existing email system if available
-        if (class_exists('EmailSystem')) {
-            $emailSystem = new EmailSystem();
-            return $emailSystem->sendEmail($to, $subject, $message, 'admin');
-        }
+        // Use RobustEmailService for reliable SMTP delivery
+        require_once __DIR__ . '/RobustEmailService.php';
+        $emailService = new RobustEmailService();
         
-        // Fallback to simple mail
-        $headers = [
-            'MIME-Version: 1.0',
-            'Content-type: text/html; charset=UTF-8',
-            'From: Admin System <' . (defined('ADMIN_EMAIL') ? ADMIN_EMAIL : 'admin@example.com') . '>',
-            'Reply-To: ' . (defined('ADMIN_EMAIL') ? ADMIN_EMAIL : 'admin@example.com'),
-            'X-Mailer: PHP/' . phpversion(),
-            'X-Priority: ' . ($priority === 'high' ? '1' : ($priority === 'low' ? '5' : '3'))
+        $priorityMap = [
+            'high' => 1,
+            'normal' => 3,
+            'low' => 5
         ];
         
-        return mail($to, $subject, $message, implode("\r\n", $headers));
+        return $emailService->sendEmail($to, $subject, $message, [
+            'priority' => $priorityMap[$priority] ?? 3,
+            'reply_to' => defined('ADMIN_EMAIL') ? ADMIN_EMAIL : FROM_EMAIL
+        ]);
     } catch (Exception $e) {
         error_log("Failed to send admin notification: " . $e->getMessage());
         return false;

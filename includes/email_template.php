@@ -34,24 +34,23 @@ class EmailTemplate {
     }
     
     /**
-     * Send email using template
+     * Send email using template with RobustEmailService
      */
     public function send($to, $subject, $templateName, $data = []) {
         $html = $this->render($templateName, $data);
         
-        // Use existing mailer
-        if (function_exists('send_email')) {
-            return send_email($to, $subject, $html);
+        try {
+            // Use RobustEmailService for reliable SMTP delivery
+            require_once __DIR__ . '/RobustEmailService.php';
+            $emailService = new RobustEmailService();
+            
+            return $emailService->sendEmail($to, $subject, $html, [
+                'alt_body' => strip_tags($html)
+            ]);
+        } catch (Exception $e) {
+            error_log("Template email sending failed: " . $e->getMessage());
+            return false;
         }
-        
-        // Fallback to PHP mail
-        $headers = [
-            'MIME-Version: 1.0',
-            'Content-type: text/html; charset=UTF-8',
-            'From: ' . env('FROM_EMAIL', 'no-reply@fezamarket.com')
-        ];
-        
-        return mail($to, $subject, $html, implode("\r\n", $headers));
     }
     
     /**
