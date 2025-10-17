@@ -48,3 +48,4 @@ uploads/digital_products/*
 phpmyadmin/tmp/
 phpmyadmin/tmp/
 test-mobile.php
+test_email_deliverability.php
