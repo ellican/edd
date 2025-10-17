@@ -66,7 +66,7 @@ class EmailService {
     }
     
     /**
-     * Send email immediately
+     * Send email immediately using RobustEmailService
      */
     private function sendImmediate($emailData) {
         $body = $this->renderTemplate($emailData['template'], $emailData['data']);
@@ -75,20 +75,19 @@ class EmailService {
             throw new Exception("Failed to render email template: " . $emailData['template']);
         }
         
-        // Use PHP mail() function for now - can be upgraded to PHPMailer later
-        $headers = [
-            'MIME-Version: 1.0',
-            'Content-type: text/html; charset=UTF-8',
-            'From: ' . FROM_NAME . ' <' . FROM_EMAIL . '>',
-            'Reply-To: ' . FROM_EMAIL,
-            'X-Mailer: PHP/' . phpversion()
-        ];
+        // Use RobustEmailService for reliable SMTP delivery
+        require_once __DIR__ . '/RobustEmailService.php';
+        $emailService = new RobustEmailService();
         
-        $success = mail(
+        $options = array_merge($emailData['options'], [
+            'alt_body' => strip_tags($body)
+        ]);
+        
+        $success = $emailService->sendEmail(
             $emailData['to'],
             $emailData['subject'],
             $body,
-            implode("\r\n", $headers)
+            $options
         );
         
         // Log the attempt
@@ -316,30 +315,63 @@ if (!class_exists('EmailTokenManager')) {
 }
 
 /**
- * Notification Helpers - Simplified for consistency
+ * Notification Helpers - Using RobustEmailService for reliable delivery
  */
 function sendWelcomeEmail($user) {
+    require_once __DIR__ . '/RobustEmailService.php';
+    
     $subject = "Welcome to " . FROM_NAME . "!";
-    $message = "Hello {$user['first_name']},\n\n";
-    $message .= "Welcome to " . FROM_NAME . "! We're excited to have you as part of our community.\n\n";
-    $message .= "Your account is now ready:\n";
-    $message .= "- Email: {$user['email']}\n";
-    $message .= "- Account Type: " . ucfirst($user['role'] ?? 'Customer') . "\n\n";
-    $message .= "You can now start shopping and managing your account.\n\n";
-    $message .= "Visit our website: " . APP_URL . "\n\n";
-    $message .= "If you have any questions, feel free to contact our support team.\n\n";
-    $message .= "Welcome aboard!\n\n";
-    $message .= "Best regards,\n" . FROM_NAME;
     
-    $headers = "From: " . FROM_EMAIL;
+    // Create HTML email body
+    $message = "
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset='UTF-8'>
+        <title>Welcome</title>
+    </head>
+    <body style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>
+        <h1 style='color: #333;'>Welcome to " . FROM_NAME . "!</h1>
+        <p>Hello {$user['first_name']},</p>
+        <p>Welcome to " . FROM_NAME . "! We're excited to have you as part of our community.</p>
+        <h3>Your account is now ready:</h3>
+        <ul>
+            <li><strong>Email:</strong> {$user['email']}</li>
+            <li><strong>Account Type:</strong> " . ucfirst($user['role'] ?? 'Customer') . "</li>
+        </ul>
+        <p>You can now start shopping and managing your account.</p>
+        <div style='text-align: center; margin: 30px 0;'>
+            <a href='" . APP_URL . "' style='background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;'>Visit Our Website</a>
+        </div>
+        <p>If you have any questions, feel free to contact our support team.</p>
+        <p>Welcome aboard!</p>
+        <hr style='margin: 30px 0; border: none; border-top: 1px solid #eee;'>
+        <p style='color: #666; font-size: 12px;'>Best regards,<br>" . FROM_NAME . "</p>
+    </body>
+    </html>";
     
-    $success = mail($user['email'], $subject, $message, $headers);
-    if ($success) {
-        Logger::info("Welcome email sent to: {$user['email']}");
-    } else {
-        Logger::error("Failed to send welcome email to: {$user['email']}");
+    try {
+        $emailService = new RobustEmailService();
+        $success = $emailService->sendEmail(
+            $user['email'], 
+            $subject, 
+            $message,
+            [
+                'to_name' => $user['first_name'] . ' ' . ($user['last_name'] ?? ''),
+                'user_id' => $user['id'] ?? null
+            ]
+        );
+        
+        if ($success) {
+            Logger::info("Welcome email sent to: {$user['email']}");
+        } else {
+            Logger::error("Failed to send welcome email to: {$user['email']}");
+        }
+        return $success;
+    } catch (Exception $e) {
+        Logger::error("Welcome email error: " . $e->getMessage());
+        return false;
     }
-    return $success;
 }
 
 function sendEmailVerification($user) {
@@ -357,71 +389,195 @@ function sendPasswordResetEmail($user) {
 }
 
 function sendOrderConfirmationEmail($order, $user) {
+    require_once __DIR__ . '/RobustEmailService.php';
+    
     $subject = "Order Confirmation - Order #{$order['id']} - " . FROM_NAME;
-    $message = "Hello {$user['first_name']},\n\n";
-    $message .= "Thank you for your order! Here are the details:\n\n";
-    $message .= "Order Number: #{$order['id']}\n";
-    $message .= "Order Total: $" . number_format($order['total'] ?? 0, 2) . "\n";
-    $message .= "Order Date: " . date('Y-m-d H:i:s') . "\n\n";
-    $message .= "You can track your order status by visiting:\n";
-    $message .= APP_URL . "/account.php?section=orders&id=" . $order['id'] . "\n\n";
-    $message .= "We'll send you updates as your order is processed and shipped.\n\n";
-    $message .= "Thank you for shopping with " . FROM_NAME . "!\n\n";
-    $message .= "Best regards,\n" . FROM_NAME;
     
-    $headers = "From: " . FROM_EMAIL;
+    // Create HTML email body
+    $message = "
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset='UTF-8'>
+        <title>Order Confirmation</title>
+    </head>
+    <body style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>
+        <h1 style='color: #333;'>Order Confirmation</h1>
+        <p>Hello {$user['first_name']},</p>
+        <p>Thank you for your order! Here are the details:</p>
+        <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+            <tr>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'><strong>Order Number:</strong></td>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'>#{$order['id']}</td>
+            </tr>
+            <tr>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'><strong>Order Total:</strong></td>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'>$" . number_format($order['total'] ?? 0, 2) . "</td>
+            </tr>
+            <tr>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'><strong>Order Date:</strong></td>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'>" . date('Y-m-d H:i:s') . "</td>
+            </tr>
+        </table>
+        <p>You can track your order status by clicking the button below:</p>
+        <div style='text-align: center; margin: 30px 0;'>
+            <a href='" . APP_URL . "/account.php?section=orders&id=" . $order['id'] . "' style='background-color: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;'>Track Order</a>
+        </div>
+        <p>We'll send you updates as your order is processed and shipped.</p>
+        <p>Thank you for shopping with " . FROM_NAME . "!</p>
+        <hr style='margin: 30px 0; border: none; border-top: 1px solid #eee;'>
+        <p style='color: #666; font-size: 12px;'>Best regards,<br>" . FROM_NAME . "</p>
+    </body>
+    </html>";
     
-    $success = mail($user['email'], $subject, $message, $headers);
-    if ($success) {
-        Logger::info("Order confirmation email sent to: {$user['email']} for order #{$order['id']}");
-    } else {
-        Logger::error("Failed to send order confirmation email to: {$user['email']} for order #{$order['id']}");
+    try {
+        $emailService = new RobustEmailService();
+        $success = $emailService->sendEmail(
+            $user['email'], 
+            $subject, 
+            $message,
+            [
+                'to_name' => $user['first_name'] . ' ' . ($user['last_name'] ?? ''),
+                'user_id' => $user['id'] ?? null
+            ]
+        );
+        
+        if ($success) {
+            Logger::info("Order confirmation email sent to: {$user['email']} for order #{$order['id']}");
+        } else {
+            Logger::error("Failed to send order confirmation email to: {$user['email']} for order #{$order['id']}");
+        }
+        return $success;
+    } catch (Exception $e) {
+        Logger::error("Order confirmation email error: " . $e->getMessage());
+        return false;
     }
-    return $success;
 }
 
 function sendSellerApprovalEmail($vendor, $user) {
+    require_once __DIR__ . '/RobustEmailService.php';
+    
     $subject = "Your Seller Account Has Been Approved! - " . FROM_NAME;
-    $message = "Hello {$user['first_name']},\n\n";
-    $message .= "Great news! Your seller account has been approved.\n\n";
-    $message .= "Business Name: {$vendor['business_name']}\n";
-    $message .= "Account Type: Seller\n\n";
-    $message .= "You can now start selling your products on " . FROM_NAME . ".\n\n";
-    $message .= "Visit your seller center: " . APP_URL . "/seller-center.php\n\n";
-    $message .= "Welcome to our seller community!\n\n";
-    $message .= "Best regards,\n" . FROM_NAME;
     
-    $headers = "From: " . FROM_EMAIL;
+    // Create HTML email body
+    $message = "
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset='UTF-8'>
+        <title>Seller Account Approved</title>
+    </head>
+    <body style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>
+        <h1 style='color: #28a745;'>Your Seller Account Has Been Approved!</h1>
+        <p>Hello {$user['first_name']},</p>
+        <p>Great news! Your seller account has been approved.</p>
+        <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+            <tr>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'><strong>Business Name:</strong></td>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'>{$vendor['business_name']}</td>
+            </tr>
+            <tr>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'><strong>Account Type:</strong></td>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'>Seller</td>
+            </tr>
+        </table>
+        <p>You can now start selling your products on " . FROM_NAME . ".</p>
+        <div style='text-align: center; margin: 30px 0;'>
+            <a href='" . APP_URL . "/seller-center.php' style='background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;'>Visit Seller Center</a>
+        </div>
+        <p>Welcome to our seller community!</p>
+        <hr style='margin: 30px 0; border: none; border-top: 1px solid #eee;'>
+        <p style='color: #666; font-size: 12px;'>Best regards,<br>" . FROM_NAME . "</p>
+    </body>
+    </html>";
     
-    $success = mail($user['email'], $subject, $message, $headers);
-    if ($success) {
-        Logger::info("Seller approval email sent to: {$user['email']}");
-    } else {
-        Logger::error("Failed to send seller approval email to: {$user['email']}");
+    try {
+        $emailService = new RobustEmailService();
+        $success = $emailService->sendEmail(
+            $user['email'], 
+            $subject, 
+            $message,
+            [
+                'to_name' => $user['first_name'] . ' ' . ($user['last_name'] ?? ''),
+                'user_id' => $user['id'] ?? null
+            ]
+        );
+        
+        if ($success) {
+            Logger::info("Seller approval email sent to: {$user['email']}");
+        } else {
+            Logger::error("Failed to send seller approval email to: {$user['email']}");
+        }
+        return $success;
+    } catch (Exception $e) {
+        Logger::error("Seller approval email error: " . $e->getMessage());
+        return false;
     }
-    return $success;
 }
 
 function sendLoginAlertEmail($user, $deviceInfo) {
+    require_once __DIR__ . '/RobustEmailService.php';
+    
     $subject = "New Sign-In to Your Account - " . FROM_NAME;
-    $message = "Hello {$user['first_name']},\n\n";
-    $message .= "We detected a new sign-in to your account:\n\n";
-    $message .= "Time: " . date('Y-m-d H:i:s') . "\n";
-    $message .= "Device: " . ($deviceInfo['device'] ?? 'Unknown') . "\n";
-    $message .= "Location: " . ($deviceInfo['location'] ?? 'Unknown') . "\n\n";
-    $message .= "If this was you, you can safely ignore this email.\n\n";
-    $message .= "If you didn't sign in, please secure your account immediately:\n";
-    $message .= APP_URL . "/account.php?tab=security\n\n";
-    $message .= "Best regards,\n" . FROM_NAME;
     
-    $headers = "From: " . FROM_EMAIL;
+    // Create HTML email body
+    $message = "
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset='UTF-8'>
+        <title>New Sign-In Alert</title>
+    </head>
+    <body style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>
+        <h1 style='color: #ff9800;'>New Sign-In to Your Account</h1>
+        <p>Hello {$user['first_name']},</p>
+        <p>We detected a new sign-in to your account:</p>
+        <table style='width: 100%; border-collapse: collapse; margin: 20px 0;'>
+            <tr>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'><strong>Time:</strong></td>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'>" . date('Y-m-d H:i:s') . "</td>
+            </tr>
+            <tr>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'><strong>Device:</strong></td>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'>" . ($deviceInfo['device'] ?? 'Unknown') . "</td>
+            </tr>
+            <tr>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'><strong>Location:</strong></td>
+                <td style='padding: 10px; border-bottom: 1px solid #eee;'>" . ($deviceInfo['location'] ?? 'Unknown') . "</td>
+            </tr>
+        </table>
+        <p>If this was you, you can safely ignore this email.</p>
+        <p style='color: #dc3545;'><strong>If you didn't sign in, please secure your account immediately:</strong></p>
+        <div style='text-align: center; margin: 30px 0;'>
+            <a href='" . APP_URL . "/account.php?tab=security' style='background-color: #dc3545; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;'>Secure Account</a>
+        </div>
+        <hr style='margin: 30px 0; border: none; border-top: 1px solid #eee;'>
+        <p style='color: #666; font-size: 12px;'>Best regards,<br>" . FROM_NAME . "</p>
+    </body>
+    </html>";
     
-    $success = mail($user['email'], $subject, $message, $headers);
-    if ($success) {
-        Logger::info("Login alert email sent to: {$user['email']}");
-    } else {
-        Logger::error("Failed to send login alert email to: {$user['email']}");
+    try {
+        $emailService = new RobustEmailService();
+        $success = $emailService->sendEmail(
+            $user['email'], 
+            $subject, 
+            $message,
+            [
+                'to_name' => $user['first_name'] . ' ' . ($user['last_name'] ?? ''),
+                'user_id' => $user['id'] ?? null,
+                'priority' => 1 // High priority for security alerts
+            ]
+        );
+        
+        if ($success) {
+            Logger::info("Login alert email sent to: {$user['email']}");
+        } else {
+            Logger::error("Failed to send login alert email to: {$user['email']}");
+        }
+        return $success;
+    } catch (Exception $e) {
+        Logger::error("Login alert email error: " . $e->getMessage());
+        return false;
     }
-    return $success;
 }
 ?>

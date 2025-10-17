@@ -24,32 +24,31 @@ class EmailSystem {
     }
     
     /**
-     * Send email using SMTP with enhanced error handling
+     * Send email using RobustEmailService with PHPMailer SMTP
      */
     public function sendEmail($to, $subject, $body, $isHtml = true, $attachments = []) {
         try {
-            // Create message headers
-            $headers = [
-                'MIME-Version: 1.0',
-                'Content-Type: ' . ($isHtml ? 'text/html' : 'text/plain') . '; charset=UTF-8',
-                'From: ' . $this->fromName . ' <' . $this->fromEmail . '>',
-                'Reply-To: ' . $this->fromEmail,
-                'X-Mailer: PHP/' . phpversion(),
-                'X-Priority: 3',
-                'Date: ' . date('r')
+            // Use RobustEmailService for reliable SMTP delivery
+            require_once __DIR__ . '/RobustEmailService.php';
+            $emailService = new RobustEmailService();
+            
+            $options = [
+                'alt_body' => $isHtml ? strip_tags($body) : null
             ];
             
-            // Add DKIM-ready headers
-            $headers[] = 'Message-ID: <' . uniqid() . '@' . parse_url(APP_URL, PHP_URL_HOST) . '>';
-            
-            // For production, use SMTP
-            if ($this->smtpHost !== 'localhost' && !empty($this->smtpUsername)) {
-                return $this->sendViaSMTP($to, $subject, $body, $isHtml, $attachments);
+            // Add attachments if provided
+            if (!empty($attachments)) {
+                $options['attachments'] = [];
+                foreach ($attachments as $attachment) {
+                    if (is_string($attachment) && file_exists($attachment)) {
+                        $options['attachments'][] = ['path' => $attachment];
+                    } elseif (is_array($attachment)) {
+                        $options['attachments'][] = $attachment;
+                    }
+                }
             }
             
-            // Fallback to PHP mail() for development
-            $headerString = implode("\r\n", $headers);
-            $success = mail($to, $subject, $body, $headerString);
+            $success = $emailService->sendEmail($to, $subject, $body, $options);
             
             // Log email attempt
             $this->logEmailAttempt($to, $subject, $success ? 'sent' : 'failed');
@@ -62,84 +61,7 @@ class EmailSystem {
             return false;
         }
     }
-    
-    /**
-     * Send via SMTP with socket connection
-     */
-    private function sendViaSMTP($to, $subject, $body, $isHtml, $attachments = []) {
-        $socket = fsockopen($this->smtpHost, $this->smtpPort, $errno, $errstr, 30);
-        
-        if (!$socket) {
-            throw new Exception("Could not connect to SMTP server: $errstr ($errno)");
-        }
-        
-        // Read initial response
-        fgets($socket, 512);
-        
-        // EHLO
-        fwrite($socket, "EHLO " . parse_url(APP_URL, PHP_URL_HOST) . "\r\n");
-        fgets($socket, 512);
-        
-        // Start TLS if enabled
-        if ($this->smtpEncryption === 'tls') {
-            fwrite($socket, "STARTTLS\r\n");
-            fgets($socket, 512);
-            stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-            
-            // EHLO again after TLS
-            fwrite($socket, "EHLO " . parse_url(APP_URL, PHP_URL_HOST) . "\r\n");
-            fgets($socket, 512);
-        }
-        
-        // Authentication
-        if (!empty($this->smtpUsername)) {
-            fwrite($socket, "AUTH LOGIN\r\n");
-            fgets($socket, 512);
-            
-            fwrite($socket, base64_encode($this->smtpUsername) . "\r\n");
-            fgets($socket, 512);
-            
-            fwrite($socket, base64_encode($this->smtpPassword) . "\r\n");
-            fgets($socket, 512);
-        }
-        
-        // Mail from
-        fwrite($socket, "MAIL FROM: <" . $this->fromEmail . ">\r\n");
-        fgets($socket, 512);
-        
-        // Recipients
-        $recipients = is_array($to) ? $to : [$to];
-        foreach ($recipients as $recipient) {
-            fwrite($socket, "RCPT TO: <$recipient>\r\n");
-            fgets($socket, 512);
-        }
-        
-        // Data
-        fwrite($socket, "DATA\r\n");
-        fgets($socket, 512);
-        
-        // Headers
-        $message = "From: " . $this->fromName . " <" . $this->fromEmail . ">\r\n";
-        $message .= "To: " . (is_array($to) ? implode(', ', $to) : $to) . "\r\n";
-        $message .= "Subject: " . $subject . "\r\n";
-        $message .= "MIME-Version: 1.0\r\n";
-        $message .= "Content-Type: " . ($isHtml ? 'text/html' : 'text/plain') . "; charset=UTF-8\r\n";
-        $message .= "Date: " . date('r') . "\r\n";
-        $message .= "\r\n";
-        $message .= $body . "\r\n";
-        $message .= ".\r\n";
-        
-        fwrite($socket, $message);
-        fgets($socket, 512);
-        
-        // Quit
-        fwrite($socket, "QUIT\r\n");
-        fclose($socket);
-        
-        $this->logEmailAttempt(is_array($to) ? implode(', ', $to) : $to, $subject, 'sent');
-        return true;
-    }
-    
+
     /**
      * Log email attempts for debugging and delivery tracking
      */

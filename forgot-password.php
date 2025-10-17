@@ -5,6 +5,7 @@
  */
 
 require_once __DIR__ . '/includes/init.php';
+require_once __DIR__ . '/includes/RobustEmailService.php';
 
 // Redirect if already logged in
 if (Session::isLoggedIn()) {
@@ -60,20 +61,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
                 
                 if ($tokenStored) {
-                    // Send the reset link email (like reference)
+                    // Send the reset link email using RobustEmailService
                     $reset_link = APP_URL . "/reset-password.php?token=" . $token;
                     $subject = "Password Reset Request - " . FROM_NAME;
-                    $email_message = "Hello {$userData['first_name']},\n\n";
-                    $email_message .= "You requested a password reset. Click the link below to set a new password:\n\n";
-                    $email_message .= "{$reset_link}\n\n";
-                    $email_message .= "This link will expire in 15 minutes. If you did not request this, please ignore this email.\n\n";
-                    $email_message .= "Regards,\n" . FROM_NAME;
-                    $headers = "From: " . FROM_EMAIL;
-
-                    $emailSent = mail($userData['email'], $subject, $email_message, $headers);
                     
-                    if ($emailSent) {
-                        Logger::info("Password reset email sent to: {$userData['email']}");
+                    // Create HTML email body
+                    $email_message = "
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <meta charset='UTF-8'>
+                        <title>Password Reset Request</title>
+                    </head>
+                    <body style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;'>
+                        <h1 style='color: #333;'>Password Reset Request</h1>
+                        <p>Hello {$userData['first_name']},</p>
+                        <p>You requested a password reset. Click the button below to set a new password:</p>
+                        <div style='text-align: center; margin: 30px 0;'>
+                            <a href='{$reset_link}' style='background-color: #dc3545; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;'>Reset Password</a>
+                        </div>
+                        <p>If the button doesn't work, copy and paste this link into your browser:</p>
+                        <p><a href='{$reset_link}'>{$reset_link}</a></p>
+                        <p>This link will expire in 15 minutes. If you did not request this, please ignore this email.</p>
+                        <hr style='margin: 30px 0; border: none; border-top: 1px solid #eee;'>
+                        <p style='color: #666; font-size: 12px;'>This email was sent from " . FROM_NAME . ". For security, never share this link with anyone.</p>
+                    </body>
+                    </html>";
+                    
+                    try {
+                        $emailService = new RobustEmailService();
+                        $emailSent = $emailService->sendEmail(
+                            $userData['email'], 
+                            $subject, 
+                            $email_message,
+                            [
+                                'to_name' => $userData['first_name'] . ' ' . $userData['last_name'],
+                                'user_id' => $userData['id']
+                            ]
+                        );
+                        
+                        if ($emailSent) {
+                            Logger::info("Password reset email sent to: {$userData['email']}");
+                        } else {
+                            Logger::error("Failed to send password reset email to: {$userData['email']}");
+                        }
+                    } catch (Exception $e) {
+                        Logger::error("Password reset email error: " . $e->getMessage());
                     }
                 }
                 
