@@ -478,6 +478,7 @@ let analyser = null;
 let cameraEnabled = true;
 let micEnabled = true;
 let currentStreamId = null;  // Will be set when stream starts
+let engagementInterval = null;
 
 // Initialize stream setup
 async function initializeStream() {
@@ -697,31 +698,55 @@ function startStreaming() {
         return;
     }
 
-    // In production, this would create a stream record in the database
-    // For now, we'll simulate with a placeholder stream ID
-    // This should be replaced with an API call to create the stream
-    currentStreamId = Date.now(); // Placeholder - should come from API
-    
-    isStreaming = true;
-    streamStartTime = Date.now();
-    
-    // Update UI
-    document.getElementById('goLiveBtn').textContent = 'End Stream';
-    document.getElementById('goLiveBtn').style.background = '#b91c1c';
-    updateStatus('live', '🔴 LIVE');
-    
-    // Start duration counter
-    durationInterval = setInterval(updateDuration, 1000);
-    
-    // Start fetching stream stats
-    statsInterval = setInterval(updateStreamStats, 5000); // Every 5 seconds
-    updateStreamStats(); // Initial fetch
-    
-    // In a real implementation, this would connect to a streaming server
-    console.log('Stream started with title:', streamTitle);
-    
-    // Show success message
-    showNotification('🎉 You are now LIVE! Your stream is broadcasting to customers.');
+    // Call API to start the stream
+    fetch('/api/streams/start.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            title: streamTitle,
+            description: 'Live shopping stream',
+            chat_enabled: 1
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentStreamId = data.stream_id;
+            isStreaming = true;
+            streamStartTime = Date.now();
+            
+            // Update UI
+            document.getElementById('goLiveBtn').textContent = 'End Stream';
+            document.getElementById('goLiveBtn').style.background = '#b91c1c';
+            updateStatus('live', '🔴 LIVE');
+            
+            // Start duration counter
+            durationInterval = setInterval(updateDuration, 1000);
+            
+            // Start fetching stream stats
+            statsInterval = setInterval(updateStreamStats, 5000); // Every 5 seconds
+            updateStreamStats(); // Initial fetch
+            
+            // Start auto-engagement
+            engagementInterval = setInterval(() => {
+                triggerEngagement(currentStreamId);
+            }, 15000); // Every 15 seconds
+            
+            // Trigger initial engagement
+            triggerEngagement(currentStreamId);
+            
+            // Show success message
+            showNotification('🎉 You are now LIVE! Your stream is broadcasting to customers.');
+        } else {
+            alert('Failed to start stream: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error starting stream:', error);
+        alert('Failed to start stream. Please try again.');
+    });
 }
 
 function stopStreaming() {
@@ -755,7 +780,7 @@ function showEndStreamModal() {
 }
 
 function endStreamWithAction(action) {
-    fetch('/api/live/end-stream.php', {
+    fetch('/api/streams/end.php', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -773,6 +798,9 @@ function endStreamWithAction(action) {
             isStreaming = false;
             clearInterval(durationInterval);
             clearInterval(statsInterval);
+            if (engagementInterval) {
+                clearInterval(engagementInterval);
+            }
             
             // Update UI
             document.getElementById('goLiveBtn').textContent = 'Go Live';
@@ -976,6 +1004,18 @@ function loadFeaturedProducts() {
             `;
         }, 500);
     }
+}
+
+// Trigger engagement for the stream
+function triggerEngagement(streamId) {
+    fetch(`/api/streams/engagement.php?stream_id=${streamId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                console.log('Engagement updated:', data);
+            }
+        })
+        .catch(error => console.error('Error triggering engagement:', error));
 }
 
 // Initialize on page load

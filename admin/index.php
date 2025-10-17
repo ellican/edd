@@ -123,6 +123,7 @@ $admin_modules = [
         'title' => 'User Management',
         'features' => [
             ['name' => 'User Management', 'url' => '/admin/users/', 'icon' => 'fas fa-users', 'desc' => 'Manage all user accounts'],
+            ['name' => 'Vendor Management', 'url' => '/admin/vendors/', 'icon' => 'fas fa-store', 'desc' => 'Manage vendors and sellers'],
             ['name' => 'Roles & Permissions', 'url' => '/admin/roles/', 'icon' => 'fas fa-user-shield', 'desc' => 'RBAC system configuration'],
             ['name' => 'KYC & Verification', 'url' => '/admin/kyc/', 'icon' => 'fas fa-id-card', 'desc' => 'Identity verification workflow']
         ]

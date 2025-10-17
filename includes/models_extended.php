@@ -958,13 +958,14 @@ class LiveStream extends BaseModel {
     public function getActiveStreams($limit = 10) {
         $sql = "
             SELECT ls.*, v.business_name as vendor_name, v.id as vendor_id,
-                   COUNT(DISTINCT sv.id) as current_viewers
+                   ls.viewer_count as current_viewers,
+                   ls.like_count,
+                   ls.dislike_count,
+                   ls.comment_count
             FROM {$this->table} ls
             JOIN vendors v ON ls.vendor_id = v.id
-            LEFT JOIN stream_viewers sv ON ls.id = sv.stream_id
             WHERE ls.status = 'live'
-            GROUP BY ls.id
-            ORDER BY current_viewers DESC, ls.started_at DESC
+            ORDER BY ls.viewer_count DESC, ls.started_at DESC
             LIMIT ?
         ";
         $stmt = $this->db->prepare($sql);
