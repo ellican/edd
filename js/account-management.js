@@ -329,60 +329,8 @@ async function makeDefaultAddress(addressId) {
     }
 }
 
-// Wallet transfer
-function showTransferModal() {
-    const modal = createModal('Transfer to FezaMarket User', `
-        <form id="transferForm" class="modal-form">
-            <div class="form-group">
-                <label for="recipient_email">Recipient Email *</label>
-                <input type="email" id="recipient_email" name="recipient_email" required 
-                       placeholder="user@example.com">
-                <small>Enter the email of the FezaMarket user you want to send money to</small>
-            </div>
-            <div class="form-group">
-                <label for="amount">Amount (USD) *</label>
-                <input type="number" id="amount" name="amount" step="0.01" min="0.01" required>
-            </div>
-            <div class="form-group">
-                <label for="note">Note (Optional)</label>
-                <textarea id="note" name="note" rows="3" placeholder="Add a message..."></textarea>
-            </div>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Transfer Funds</button>
-            </div>
-        </form>
-    `);
-    
-    document.getElementById('transferForm').addEventListener('submit', handleWalletTransfer);
-}
-
-async function handleWalletTransfer(e) {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const data = Object.fromEntries(formData.entries());
-    data.csrf_token = getCsrfToken();
-    
-    try {
-        const response = await fetch('/api/account/wallet-transfer.php', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            showNotification(result.message, 'success');
-            closeModal();
-            setTimeout(() => location.reload(), 1000);
-        } else {
-            showNotification(result.error, 'error');
-        }
-    } catch (error) {
-        showNotification('An error occurred. Please try again.', 'error');
-    }
-}
+// Wallet transfer functionality has been moved to account.php to avoid conflicts
+// The showTransferModal() function is defined in account.php inline script
 
 // Order management
 async function cancelOrder(orderId) {
@@ -613,7 +561,7 @@ if (typeof window !== 'undefined') {
     window.editAddress = editAddress;
     window.makeDefaultAddress = makeDefaultAddress;
     window.deleteAddress = deleteAddress;
-    window.showTransferModal = showTransferModal;
+    // Note: showTransferModal is defined in account.php to avoid conflicts
     window.createModal = createModal;
     window.closeModal = closeModal;
 }
