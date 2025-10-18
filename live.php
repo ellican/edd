@@ -267,8 +267,9 @@ includeHeader($page_title);
             <div class="recent-stream-card" data-stream-id="<?php echo $recent['id']; ?>">
                 <div class="recent-stream-thumbnail">
                     <?php if ($recent['thumbnail_url']): ?>
-                        <img src="<?php echo htmlspecialchars($recent['thumbnail_url']); ?>" 
-                             alt="<?php echo htmlspecialchars($recent['title']); ?>">
+                        <img data-src="<?php echo htmlspecialchars($recent['thumbnail_url']); ?>" 
+                             alt="<?php echo htmlspecialchars($recent['title']); ?>"
+                             class="lazy-thumbnail">
                     <?php else: ?>
                         <div class="thumbnail-placeholder">📹</div>
                     <?php endif; ?>
@@ -767,6 +768,15 @@ includeHeader($page_title);
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+.lazy-thumbnail {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.lazy-thumbnail.loaded {
+    opacity: 1;
 }
 
 .thumbnail-placeholder {
@@ -1297,8 +1307,126 @@ function setReminder(eventId) {
 }
 
 function playStream(streamId) {
-    // Redirect to a stream player page or open modal
-    window.location.href = `/live.php?stream=${streamId}&replay=1`;
+    // Open replay in modal instead of redirecting
+    showReplayModal(streamId);
+}
+
+function showReplayModal(streamId) {
+    // Fetch stream details
+    fetch(`/api/streams/get.php?stream_id=${streamId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.stream) {
+                const stream = data.stream;
+                
+                // Create modal HTML
+                const modal = document.createElement('div');
+                modal.id = 'replayModal';
+                modal.style.cssText = 'display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 10000; align-items: center; justify-content: center; padding: 20px;';
+                
+                const videoPath = stream.video_path || stream.stream_url;
+                
+                modal.innerHTML = `
+                    <div style="max-width: 1200px; width: 100%; background: #1f2937; border-radius: 12px; overflow: hidden; position: relative;">
+                        <button onclick="closeReplayModal()" style="position: absolute; top: 15px; right: 15px; width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.7); color: white; border: none; font-size: 20px; cursor: pointer; z-index: 1;">✕</button>
+                        
+                        <div style="position: relative; background: #000;">
+                            ${videoPath ? `
+                                <video controls autoplay style="width: 100%; display: block; max-height: 70vh;">
+                                    <source src="${escapeHtml(videoPath)}" type="video/mp4">
+                                    Your browser does not support the video tag.
+                                </video>
+                            ` : `
+                                <div style="aspect-ratio: 16/9; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; padding: 40px; text-align: center;">
+                                    <div style="font-size: 64px; margin-bottom: 20px;">📹</div>
+                                    <h3 style="font-size: 24px; margin-bottom: 10px;">Video Not Available</h3>
+                                    <p style="font-size: 16px; opacity: 0.8;">This stream recording is currently unavailable.</p>
+                                </div>
+                            `}
+                        </div>
+                        
+                        <div style="padding: 25px; color: white;">
+                            <h2 style="font-size: 24px; margin-bottom: 15px;">${escapeHtml(stream.title)}</h2>
+                            <div style="display: flex; gap: 20px; margin-bottom: 15px; flex-wrap: wrap; font-size: 14px; opacity: 0.8;">
+                                <span>👤 ${escapeHtml(stream.vendor_name || 'Seller')}</span>
+                                <span>🕒 ${formatStreamDate(stream.started_at)}</span>
+                                <span>⏱️ ${formatStreamDuration(stream.started_at, stream.ended_at)}</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; padding: 20px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 32px;">👥</div>
+                                    <div style="font-size: 20px; font-weight: 600; margin: 5px 0;">${numberFormat(stream.viewer_count || 0)}</div>
+                                    <div style="font-size: 13px; opacity: 0.7;">Viewers</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 32px;">👍</div>
+                                    <div style="font-size: 20px; font-weight: 600; margin: 5px 0;">${numberFormat(stream.like_count || 0)}</div>
+                                    <div style="font-size: 13px; opacity: 0.7;">Likes</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 32px;">💬</div>
+                                    <div style="font-size: 20px; font-weight: 600; margin: 5px 0;">${numberFormat(stream.comment_count || 0)}</div>
+                                    <div style="font-size: 13px; opacity: 0.7;">Comments</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Prevent body scroll
+                document.body.style.overflow = 'hidden';
+            } else {
+                alert('Failed to load stream details');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading stream:', error);
+            alert('Failed to load stream replay');
+        });
+}
+
+function closeReplayModal() {
+    const modal = document.getElementById('replayModal');
+    if (modal) {
+        // Stop video if playing
+        const video = modal.querySelector('video');
+        if (video) {
+            video.pause();
+        }
+        modal.remove();
+        document.body.style.overflow = '';
+    }
+}
+
+function formatStreamDate(dateStr) {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function formatStreamDuration(startStr, endStr) {
+    if (!startStr || !endStr) return 'N/A';
+    const start = new Date(startStr);
+    const end = new Date(endStr);
+    const diffSeconds = Math.floor((end - start) / 1000);
+    const hours = Math.floor(diffSeconds / 3600);
+    const minutes = Math.floor((diffSeconds % 3600) / 60);
+    
+    if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+}
+
+function numberFormat(num) {
+    return new Intl.NumberFormat().format(num);
 }
 
 // Poll for live stream status updates every 30 seconds
@@ -1407,6 +1535,35 @@ setInterval(() => {
 document.getElementById('chatInput')?.addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
         sendMessage();
+    }
+});
+
+// Lazy load thumbnails using Intersection Observer
+document.addEventListener('DOMContentLoaded', function() {
+    const lazyImages = document.querySelectorAll('.lazy-thumbnail');
+    
+    if ('IntersectionObserver' in window) {
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.src = img.dataset.src;
+                    img.classList.add('loaded');
+                    img.removeAttribute('data-src');
+                    imageObserver.unobserve(img);
+                }
+            });
+        }, {
+            rootMargin: '50px' // Start loading 50px before entering viewport
+        });
+        
+        lazyImages.forEach(img => imageObserver.observe(img));
+    } else {
+        // Fallback for browsers without IntersectionObserver
+        lazyImages.forEach(img => {
+            img.src = img.dataset.src;
+            img.classList.add('loaded');
+        });
     }
 });
 </script>

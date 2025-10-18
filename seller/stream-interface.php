@@ -414,6 +414,15 @@ include __DIR__ . '/../templates/seller-header.php';
                         </div>
                     </div>
                 </div>
+                
+                <div class="panel-section">
+                    <h3>📊 Manage Streams</h3>
+                    <div style="text-align: center;">
+                        <a href="/seller/streams.php" class="btn btn-primary" style="display: inline-block; padding: 10px 20px; background: #dc2626; color: white; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 600;">
+                            View All Streams
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -729,18 +738,30 @@ function startStreaming() {
             statsInterval = setInterval(updateStreamStats, 5000); // Every 5 seconds
             updateStreamStats(); // Initial fetch
             
-            // Start auto-engagement with random intervals (5-15 seconds)
-            function scheduleNextEngagement() {
-                const randomDelay = (5 + Math.random() * 10) * 1000; // 5-15 seconds in milliseconds
-                engagementInterval = setTimeout(() => {
-                    triggerEngagement(currentStreamId);
-                    scheduleNextEngagement(); // Schedule next one
-                }, randomDelay);
-            }
+            // Start automatic engagement simulation
+            // Viewers start after 10 seconds, increment by 1-3 at random intervals (5-20s)
+            setTimeout(() => {
+                function scheduleViewerIncrease() {
+                    const randomDelay = (5 + Math.random() * 15) * 1000; // 5-20 seconds
+                    setTimeout(() => {
+                        triggerEngagement(currentStreamId);
+                        scheduleViewerIncrease();
+                    }, randomDelay);
+                }
+                scheduleViewerIncrease();
+            }, 10000); // Start after 10 seconds
             
-            // Trigger initial engagement and start the cycle
-            triggerEngagement(currentStreamId);
-            scheduleNextEngagement();
+            // Likes start after 30 seconds, increment gradually at random intervals
+            setTimeout(() => {
+                function scheduleLikeIncrease() {
+                    const randomDelay = (10 + Math.random() * 20) * 1000; // 10-30 seconds
+                    setTimeout(() => {
+                        triggerEngagement(currentStreamId);
+                        scheduleLikeIncrease();
+                    }, randomDelay);
+                }
+                scheduleLikeIncrease();
+            }, 30000); // Start after 30 seconds
             
             // Show success message
             showNotification('🎉 You are now LIVE! Your stream is broadcasting to customers.');
@@ -785,6 +806,9 @@ function showEndStreamModal() {
 }
 
 function endStreamWithAction(action) {
+    // Generate video path based on stream ID and timestamp
+    const videoPath = action === 'save' ? `/uploads/streams/stream_${currentStreamId}_${Date.now()}.mp4` : null;
+    
     fetch('/api/streams/end.php', {
         method: 'POST',
         headers: {
@@ -793,19 +817,16 @@ function endStreamWithAction(action) {
         body: JSON.stringify({
             stream_id: currentStreamId,
             action: action,
-            video_url: 'placeholder_video_url' // In production, this would be the actual stream recording URL
+            video_url: videoPath
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Clean up
+            // Clean up all timers
             isStreaming = false;
             clearInterval(durationInterval);
             clearInterval(statsInterval);
-            if (engagementInterval) {
-                clearInterval(engagementInterval);
-            }
             
             // Update UI
             document.getElementById('goLiveBtn').textContent = 'Go Live';
