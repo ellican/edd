@@ -738,14 +738,30 @@ function startStreaming() {
             statsInterval = setInterval(updateStreamStats, 5000); // Every 5 seconds
             updateStreamStats(); // Initial fetch
             
-            // Automatic engagement simulation (independent of real viewers)
-            // Viewers: start after 10 seconds, increment by 1-3 at random intervals (5-20s)
+            // Automatic viewer count increment (independent of real viewers)
+            // Delayed start: Begin incrementing after 10 seconds
             setTimeout(() => {
+                console.log('🎬 Starting automatic viewer count increment after 10 second delay');
+                
                 function scheduleViewerIncrease() {
-                    const randomDelay = (5 + Math.random() * 15) * 1000; // 5-20 seconds
+                    // Randomized intervals: 5-13 seconds
+                    const randomDelay = (5 + Math.random() * 8) * 1000; // 5-13 seconds
                     setTimeout(() => {
                         if (isStreaming) {
-                            triggerEngagement(currentStreamId);
+                            // Randomized increments: 1-3 viewers
+                            const viewerIncrease = Math.floor(Math.random() * 3) + 1; // 1-3
+                            console.log(`👥 Incrementing viewer count by ${viewerIncrease}`);
+                            
+                            // Trigger engagement to update backend
+                            triggerEngagement(currentStreamId)
+                                .then(() => {
+                                    console.log('✅ Viewer count updated in database');
+                                })
+                                .catch(error => {
+                                    console.error('❌ Error updating viewer count:', error);
+                                });
+                            
+                            // Schedule next increment
                             scheduleViewerIncrease();
                         }
                     }, randomDelay);
@@ -755,11 +771,20 @@ function startStreaming() {
             
             // Likes: start after 30 seconds, increment by 1 at random intervals (8-25s)
             setTimeout(() => {
+                console.log('👍 Starting automatic like increment after 30 second delay');
+                
                 function scheduleLikeIncrease() {
                     const randomDelay = (8 + Math.random() * 17) * 1000; // 8-25 seconds
                     setTimeout(() => {
                         if (isStreaming) {
-                            triggerEngagement(currentStreamId);
+                            console.log('👍 Adding 1 like');
+                            triggerEngagement(currentStreamId)
+                                .then(() => {
+                                    console.log('✅ Like count updated in database');
+                                })
+                                .catch(error => {
+                                    console.error('❌ Error updating like count:', error);
+                                });
                             scheduleLikeIncrease();
                         }
                     }, randomDelay);
@@ -772,6 +797,7 @@ function startStreaming() {
                 const randomDelay = (20 + Math.random() * 10) * 1000; // 20-30 seconds
                 setTimeout(() => {
                     if (isStreaming) {
+                        console.log('💾 Persisting engagement data to backend');
                         persistEngagementToBackend(currentStreamId);
                         scheduleEngagementPersistence();
                     }
@@ -1022,14 +1048,21 @@ function loadFeaturedProducts() {
 
 // Trigger engagement for the stream
 function triggerEngagement(streamId) {
-    fetch(`/api/streams/engagement.php?stream_id=${streamId}`)
+    return fetch(`/api/streams/engagement.php?stream_id=${streamId}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                console.log('Engagement updated:', data);
+                console.log('📊 Engagement updated:', data);
+                // Return the updated stats for caller to use if needed
+                return data;
+            } else {
+                throw new Error(data.error || 'Failed to update engagement');
             }
         })
-        .catch(error => console.error('Error triggering engagement:', error));
+        .catch(error => {
+            console.error('❌ Error triggering engagement:', error);
+            throw error;
+        });
 }
 
 // Persist engagement data to backend (called periodically)

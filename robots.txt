@@ -1,0 +1,23 @@
+# robots.txt for FezaMarket
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /includes/
+Disallow: /cart.php
+Disallow: /checkout.php
+Disallow: /login.php
+Disallow: /register.php
+Disallow: /seller/
+Disallow: /account/
+Disallow: /phpmyadmin/
+
+# Allow search engines to crawl product and category pages
+Allow: /product/
+Allow: /products.php
+Allow: /category.php
+Allow: /live.php
+
+# Sitemap location
+Sitemap: https://fezamarket.com/sitemap.xml

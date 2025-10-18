@@ -6,6 +6,9 @@
 
 require_once __DIR__ . '/includes/init.php';
 
+// Load SEO helper
+require_once __DIR__ . '/includes/seo.php';
+
 $product = new Product();
 $liveStream = new LiveStream();
 
@@ -75,8 +78,44 @@ $recentStreams = $stmt->fetchAll();
 $liveProducts = $product->findAll(8);
 $featuredProducts = $product->getFeatured(4);
 
-$page_title = 'FezaMarket Live - Shop Live Events';
+// Generate SEO meta tags for live page
+$seoConfig = [];
+if ($isReplay && $replayStreamId && $replayStream) {
+    // Replay mode SEO
+    $seoConfig = [
+        'title' => 'Watch Replay: ' . htmlspecialchars($replayStream['title']) . ' - FezaMarket Live',
+        'description' => htmlspecialchars($replayStream['description'] ?? 'Watch this exciting live shopping stream replay on FezaMarket'),
+        'keywords' => 'live shopping replay, video shopping, ' . htmlspecialchars($replayStream['title']),
+        'image' => $replayStream['thumbnail_url'] ?? '/assets/images/live-default.jpg',
+        'type' => 'video.other',
+        'canonical' => 'https://' . ($_SERVER['HTTP_HOST'] ?? 'fezamarket.com') . '/live.php?stream=' . $replayStreamId . '&replay=1'
+    ];
+    $videoSchema = SEO::generateVideoSchema($replayStream, null);
+} else {
+    // Live page SEO
+    $seoConfig = [
+        'title' => 'FezaMarket Live - Shop Live Events & Exclusive Deals',
+        'description' => 'Join interactive live shopping events on FezaMarket. Get exclusive deals, ask questions in real-time, and shop directly from live product showcases.',
+        'keywords' => 'live shopping, live stream shopping, interactive shopping, exclusive deals, real-time shopping, video shopping',
+        'image' => '/assets/images/live-banner.jpg',
+        'type' => 'website',
+        'canonical' => 'https://' . ($_SERVER['HTTP_HOST'] ?? 'fezamarket.com') . '/live.php'
+    ];
+    $videoSchema = '';
+}
+
+$page_title = $seoConfig['title'];
 includeHeader($page_title);
+
+// Output SEO meta tags and structured data
+if (!empty($seoConfig)) {
+    echo "\n<!-- SEO Meta Tags -->\n";
+    echo SEO::generateMetaTags($seoConfig);
+    if (!empty($videoSchema)) {
+        echo "\n" . $videoSchema . "\n";
+    }
+    echo SEO::generateOrganizationSchema() . "\n";
+}
 ?>
 
 <div class="container">
@@ -106,11 +145,17 @@ includeHeader($page_title);
                 <div class="stream-container">
                     <div class="stream-video">
                         <div class="live-badge">🔴 LIVE</div>
-                        <div class="stream-content">
-                            <div class="stream-thumbnail">📱</div>
-                            <h3><?php echo htmlspecialchars($mainStream['title']); ?></h3>
-                            <p><?php echo htmlspecialchars($mainStream['description'] ?? 'Join us for exclusive deals!'); ?></p>
+                        
+                        <!-- Live Video Player (replaces static thumbnail) -->
+                        <div id="liveVideoPlayer-<?php echo $mainStream['id']; ?>" class="live-video-player" style="width: 100%; aspect-ratio: 16/9; background: #000; position: relative;">
+                            <!-- Video player will be initialized here via JavaScript -->
+                            <div class="stream-placeholder" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white;">
+                                <div style="font-size: 48px; margin-bottom: 15px;">📹</div>
+                                <h3 style="font-size: 20px;"><?php echo htmlspecialchars($mainStream['title']); ?></h3>
+                                <p style="opacity: 0.8;"><?php echo htmlspecialchars($mainStream['description'] ?? 'Loading stream...'); ?></p>
+                            </div>
                         </div>
+                        
                         <div class="stream-stats">
                             <span class="viewer-count" id="viewer-count-<?php echo $mainStream['id']; ?>">
                                 👥 <span class="count"><?php echo $mainStream['current_viewers'] ?? 0; ?></span> watching
@@ -1025,6 +1070,12 @@ includeHeader($page_title);
 }
 </style>
 
+<!-- Include HLS.js for adaptive streaming -->
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<!-- Include Live Stream Player -->
+<script src="/js/live-stream-player.js"></script>
+
 <!-- Include purchase flows JS -->
 <script src="/assets/js/purchase-flows.js"></script>
 
@@ -1033,12 +1084,20 @@ includeHeader($page_title);
 let currentStreamId = null;
 let viewerId = null;
 let isLoggedIn = <?php echo Session::isLoggedIn() ? 'true' : 'false'; ?>;
+let livePlayer = null;
 
 // Initialize stream when page loads
 document.addEventListener('DOMContentLoaded', function() {
     const mainStream = document.querySelector('.main-live-stream');
     if (mainStream) {
         currentStreamId = parseInt(mainStream.dataset.streamId);
+        
+        // Initialize live video player
+        console.log('🎬 Initializing live video player for stream:', currentStreamId);
+        livePlayer = new LiveStreamPlayer('liveVideoPlayer-' + currentStreamId, currentStreamId);
+        livePlayer.init();
+        livePlayer.monitorStreamStatus();
+        
         joinStream(currentStreamId);
         loadComments(currentStreamId);
         
@@ -1063,10 +1122,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Before leaving page, mark viewer as left
+// Before leaving page, mark viewer as left and cleanup player
 window.addEventListener('beforeunload', function() {
     if (viewerId && currentStreamId) {
         leaveStream(currentStreamId, viewerId);
+    }
+    
+    // Cleanup video player
+    if (livePlayer) {
+        livePlayer.destroy();
     }
 });
 
