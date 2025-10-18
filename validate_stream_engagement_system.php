@@ -110,24 +110,43 @@ try {
         if ($activeCount > 0) {
             $successes[] = "✅ $activeCount active stream(s) found";
             
-            // Check if any have fake viewers
-            $stmt = $db->query("
-                SELECT ls.id, ls.title, 
-                       COALESCE(COUNT(sv.id), 0) as fake_viewer_count
-                FROM live_streams ls
-                LEFT JOIN stream_viewers sv ON ls.id = sv.stream_id AND sv.is_fake = 1 AND sv.left_at IS NULL
-                WHERE ls.status = 'live'
-                GROUP BY ls.id
-            ");
-            $streams = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Only check for fake viewers if stream_viewers table exists with is_fake column
+            $stmt = $db->query("SHOW TABLES LIKE 'stream_viewers'");
+            $tableExists = $stmt->fetch();
             
-            foreach ($streams as $stream) {
-                if ($stream['fake_viewer_count'] > 0) {
-                    $successes[] = "  ✅ Stream '{$stream['title']}' has {$stream['fake_viewer_count']} fake viewers";
+            if ($tableExists) {
+                $stmt = $db->query("SHOW COLUMNS FROM stream_viewers LIKE 'is_fake'");
+                $columnExists = $stmt->fetch();
+                
+                if ($columnExists) {
+                    // Check if any have fake viewers
+                    try {
+                        $stmt = $db->query("
+                            SELECT ls.id, ls.title, 
+                                   COALESCE(COUNT(sv.id), 0) as fake_viewer_count
+                            FROM live_streams ls
+                            LEFT JOIN stream_viewers sv ON ls.id = sv.stream_id AND sv.is_fake = 1 AND sv.left_at IS NULL
+                            WHERE ls.status = 'live'
+                            GROUP BY ls.id
+                        ");
+                        $streams = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                        
+                        foreach ($streams as $stream) {
+                            if ($stream['fake_viewer_count'] > 0) {
+                                $successes[] = "  ✅ Stream '{$stream['title']}' has {$stream['fake_viewer_count']} fake viewers";
+                            } else {
+                                $warnings[] = "  ⚠️ Stream '{$stream['title']}' has no fake viewers yet";
+                                $warnings[] = "    Try: curl http://localhost/api/streams/engagement.php?stream_id={$stream['id']}";
+                            }
+                        }
+                    } catch (Exception $e) {
+                        $warnings[] = "  ⚠️ Could not check fake viewers: " . $e->getMessage();
+                    }
                 } else {
-                    $warnings[] = "  ⚠️ Stream '{$stream['title']}' has no fake viewers yet";
-                    $warnings[] = "    Try: curl http://localhost/api/streams/engagement.php?stream_id={$stream['id']}";
+                    $warnings[] = "  ⚠️ stream_viewers table exists but is_fake column is missing";
                 }
+            } else {
+                $warnings[] = "  ⚠️ stream_viewers table doesn't exist yet";
             }
         } else {
             $warnings[] = "⚠️ No active streams found (start a stream to test engagement)";

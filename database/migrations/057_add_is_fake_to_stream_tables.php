@@ -6,12 +6,6 @@
 
 return [
     'up' => "
-        -- Add is_fake column to stream_interactions if it doesn't exist
-        ALTER TABLE `stream_interactions` 
-        ADD COLUMN IF NOT EXISTS `is_fake` TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Whether this is a fake/simulated interaction' AFTER `comment_text`,
-        ADD INDEX IF NOT EXISTS `idx_is_fake` (`is_fake`),
-        ADD INDEX IF NOT EXISTS `idx_stream_fake` (`stream_id`, `is_fake`);
-        
         -- Create stream_viewers table if it doesn't exist
         CREATE TABLE IF NOT EXISTS `stream_viewers` (
             `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -48,18 +42,9 @@ return [
             UNIQUE KEY `unique_stream_config` (`stream_id`),
             FOREIGN KEY (`stream_id`) REFERENCES `live_streams`(`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        
-        -- Update existing interactions to have is_fake = 0 (real)
-        UPDATE `stream_interactions` SET `is_fake` = 0 WHERE `is_fake` IS NULL;
     ",
     
     'down' => "
-        -- Remove is_fake column from stream_interactions
-        ALTER TABLE `stream_interactions` 
-        DROP INDEX IF EXISTS `idx_stream_fake`,
-        DROP INDEX IF EXISTS `idx_is_fake`,
-        DROP COLUMN IF EXISTS `is_fake`;
-        
         -- Drop stream_viewers table
         DROP TABLE IF EXISTS `stream_viewers`;
         
