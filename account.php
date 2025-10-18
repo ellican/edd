@@ -1042,22 +1042,22 @@ let cardElement = null;
 let setupIntentClientSecret = null;
 
 async function addPaymentMethod() {
-    // Initialize Stripe if not already done
-    if (!stripe) {
-        // Get Stripe publishable key from meta tag (should be set in header)
-        const stripeKey = document.querySelector('meta[name="stripe-publishable-key"]')?.content;
-        if (!stripeKey || stripeKey.trim() === '') {
-            alert('Stripe payment processing is not configured on this site.\n\nTo enable payment methods, the site administrator needs to:\n1. Add Stripe API keys to the .env file\n2. Set STRIPE_LIVE_PUBLISHABLE_KEY (for live mode) or STRIPE_TEST_PUBLISHABLE_KEY (for test mode)\n3. Set STRIPE_MODE=live (or test)\n\nPlease contact support for assistance.');
-            return;
-        }
-        stripe = Stripe(stripeKey);
-    }
-    
-    // Show modal
-    document.getElementById('addPaymentMethodModal').style.display = 'flex';
-    
-    // Create Setup Intent
     try {
+        // Initialize Stripe if not already done
+        if (!stripe) {
+            // Get Stripe publishable key from meta tag (should be set in header)
+            const stripeKey = document.querySelector('meta[name="stripe-publishable-key"]')?.content;
+            if (!stripeKey || stripeKey.trim() === '') {
+                alert('Stripe payment processing is not configured on this site.\n\nTo enable payment methods, the site administrator needs to:\n1. Add Stripe API keys to the .env file\n2. Set STRIPE_LIVE_PUBLISHABLE_KEY (for live mode) or STRIPE_TEST_PUBLISHABLE_KEY (for test mode)\n3. Set STRIPE_MODE=live (or test)\n\nPlease contact support for assistance.');
+                return;
+            }
+            stripe = Stripe(stripeKey);
+        }
+        
+        // Show modal
+        document.getElementById('addPaymentMethodModal').style.display = 'flex';
+        
+        // Create Setup Intent
         const response = await fetch('/api/payment-methods/create-setup-intent.php', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -1087,6 +1087,12 @@ async function addPaymentMethod() {
                 }
             }
         });
+        
+        // Ensure the card element container exists before mounting
+        const cardElementContainer = document.getElementById('card-element');
+        if (!cardElementContainer) {
+            throw new Error('Card element container not found');
+        }
         
         cardElement.mount('#card-element');
         
