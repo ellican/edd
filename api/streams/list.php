@@ -10,14 +10,41 @@ header('Content-Type: application/json');
 
 try {
     $db = db();
-    $type = $_GET['type'] ?? 'all'; // 'active', 'scheduled', 'recent', or 'all'
+    $type = $_GET['type'] ?? 'all'; // 'active', 'scheduled', 'recent', 'archived', 'live', or 'all'
     $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
     $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
     
+    // Check if filtering by vendor
+    $vendorId = null;
+    if (Session::isLoggedIn()) {
+        $vendor = new Vendor();
+        $vendorInfo = $vendor->findByUserId(Session::getUserId());
+        if ($vendorInfo) {
+            $vendorId = $vendorInfo['id'];
+        }
+    }
+    
     $response = ['success' => true];
+    
+    // Map 'live' type to 'active' for backward compatibility
+    if ($type === 'live') {
+        $type = 'active';
+    }
     
     if ($type === 'active' || $type === 'all') {
         // Get active (live) streams
+        $whereClauses = ["ls.status = 'live'"];
+        $params = [];
+        
+        if ($vendorId) {
+            $whereClauses[] = "ls.vendor_id = ?";
+            $params[] = $vendorId;
+        }
+        
+        $whereSQL = implode(' AND ', $whereClauses);
+        $params[] = $limit;
+        $params[] = $offset;
+        
         $stmt = $db->prepare("
             SELECT ls.*, 
                    v.business_name as vendor_name,
@@ -26,16 +53,33 @@ try {
                    TIMESTAMPDIFF(SECOND, ls.started_at, NOW()) as duration_seconds
             FROM live_streams ls
             JOIN vendors v ON ls.vendor_id = v.id
-            WHERE ls.status = 'live'
+            WHERE {$whereSQL}
             ORDER BY ls.viewer_count DESC, ls.started_at DESC
             LIMIT ? OFFSET ?
         ");
-        $stmt->execute([$limit, $offset]);
+        $stmt->execute($params);
         $response['active'] = $stmt->fetchAll();
+        
+        // For single type requests, return streams array directly
+        if ($type === 'active') {
+            $response['streams'] = $response['active'];
+        }
     }
     
     if ($type === 'scheduled' || $type === 'all') {
         // Get scheduled streams (future only)
+        $whereClauses = ["ls.status = 'scheduled'", "ls.scheduled_at > NOW()"];
+        $params = [];
+        
+        if ($vendorId) {
+            $whereClauses[] = "ls.vendor_id = ?";
+            $params[] = $vendorId;
+        }
+        
+        $whereSQL = implode(' AND ', $whereClauses);
+        $params[] = $limit;
+        $params[] = $offset;
+        
         $stmt = $db->prepare("
             SELECT ls.*,
                    v.business_name as vendor_name,
@@ -43,17 +87,33 @@ try {
                    TIMESTAMPDIFF(SECOND, NOW(), ls.scheduled_at) as seconds_until_start
             FROM live_streams ls
             JOIN vendors v ON ls.vendor_id = v.id
-            WHERE ls.status = 'scheduled' 
-              AND ls.scheduled_at > NOW()
+            WHERE {$whereSQL}
             ORDER BY ls.scheduled_at ASC
             LIMIT ? OFFSET ?
         ");
-        $stmt->execute([$limit, $offset]);
+        $stmt->execute($params);
         $response['scheduled'] = $stmt->fetchAll();
+        
+        // For single type requests, return streams array directly
+        if ($type === 'scheduled') {
+            $response['streams'] = $response['scheduled'];
+        }
     }
     
-    if ($type === 'recent' || $type === 'all') {
+    if ($type === 'recent' || $type === 'archived' || $type === 'all') {
         // Get recent archived streams
+        $whereClauses = ["ls.status = 'archived'", "ls.ended_at IS NOT NULL"];
+        $params = [];
+        
+        if ($vendorId) {
+            $whereClauses[] = "ls.vendor_id = ?";
+            $params[] = $vendorId;
+        }
+        
+        $whereSQL = implode(' AND ', $whereClauses);
+        $params[] = $limit;
+        $params[] = $offset;
+        
         $stmt = $db->prepare("
             SELECT ls.*,
                    v.business_name as vendor_name,
@@ -61,13 +121,17 @@ try {
                    TIMESTAMPDIFF(SECOND, ls.started_at, ls.ended_at) as duration_seconds
             FROM live_streams ls
             JOIN vendors v ON ls.vendor_id = v.id
-            WHERE ls.status = 'archived'
-              AND ls.ended_at IS NOT NULL
+            WHERE {$whereSQL}
             ORDER BY ls.ended_at DESC
             LIMIT ? OFFSET ?
         ");
-        $stmt->execute([$limit, $offset]);
+        $stmt->execute($params);
         $response['recent'] = $stmt->fetchAll();
+        
+        // For single type requests, return streams array directly
+        if ($type === 'recent' || $type === 'archived') {
+            $response['streams'] = $response['recent'];
+        }
     }
     
     // Get counts for each type
