@@ -986,13 +986,17 @@ class LiveStream extends BaseModel {
     }
     
     public function createStream($vendorId, $data) {
+        // Generate unique stream key
+        $streamKey = $this->generateStreamKey($vendorId);
+        
         $stmt = $this->db->prepare("
             INSERT INTO {$this->table} 
-            (vendor_id, title, description, thumbnail_url, stream_url, chat_enabled, status, scheduled_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (vendor_id, stream_key, title, description, thumbnail_url, stream_url, chat_enabled, status, scheduled_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         return $stmt->execute([
             $vendorId,
+            $streamKey,
             $data['title'],
             $data['description'] ?? null,
             $data['thumbnail_url'] ?? null,
@@ -1001,6 +1005,37 @@ class LiveStream extends BaseModel {
             $data['status'] ?? 'scheduled',
             $data['scheduled_at'] ?? null
         ]);
+    }
+    
+    /**
+     * Generate a unique stream key
+     */
+    private function generateStreamKey($vendorId) {
+        $attempts = 0;
+        $maxAttempts = 10;
+        
+        do {
+            // Generate a unique stream key: vendor_id + timestamp + random string
+            $streamKey = sprintf(
+                'stream_%d_%d_%s',
+                $vendorId,
+                time(),
+                substr(md5(uniqid(rand(), true)), 0, 16)
+            );
+            
+            // Check if this key already exists
+            $stmt = $this->db->prepare("SELECT id FROM {$this->table} WHERE stream_key = ?");
+            $stmt->execute([$streamKey]);
+            $exists = $stmt->fetch();
+            
+            $attempts++;
+        } while ($exists && $attempts < $maxAttempts);
+        
+        if ($exists) {
+            throw new Exception('Failed to generate unique stream key');
+        }
+        
+        return $streamKey;
     }
     
     public function startStream($streamId) {
