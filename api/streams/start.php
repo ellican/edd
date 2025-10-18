@@ -122,14 +122,46 @@ try {
     }
     
     // Initialize engagement config for this stream if it doesn't exist
+    // Load global settings
+    $stmt = $db->query("
+        SELECT setting_key, setting_value 
+        FROM global_stream_settings 
+        WHERE setting_key IN (
+            'fake_viewers_enabled', 'fake_likes_enabled', 'min_fake_viewers', 
+            'max_fake_viewers', 'viewer_increase_rate', 'viewer_decrease_rate', 
+            'like_rate', 'engagement_multiplier'
+        )
+    ");
+    $globalSettings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    
+    // Use global settings or defaults
+    $fakeViewersEnabled = isset($globalSettings['fake_viewers_enabled']) ? (int)$globalSettings['fake_viewers_enabled'] : 1;
+    $fakeLikesEnabled = isset($globalSettings['fake_likes_enabled']) ? (int)$globalSettings['fake_likes_enabled'] : 1;
+    $minFakeViewers = isset($globalSettings['min_fake_viewers']) ? (int)$globalSettings['min_fake_viewers'] : 15;
+    $maxFakeViewers = isset($globalSettings['max_fake_viewers']) ? (int)$globalSettings['max_fake_viewers'] : 100;
+    $viewerIncreaseRate = isset($globalSettings['viewer_increase_rate']) ? (int)$globalSettings['viewer_increase_rate'] : 5;
+    $viewerDecreaseRate = isset($globalSettings['viewer_decrease_rate']) ? (int)$globalSettings['viewer_decrease_rate'] : 3;
+    $likeRate = isset($globalSettings['like_rate']) ? (int)$globalSettings['like_rate'] : 3;
+    $engagementMultiplier = isset($globalSettings['engagement_multiplier']) ? (float)$globalSettings['engagement_multiplier'] : 2.00;
+    
     $stmt = $db->prepare("
         INSERT IGNORE INTO stream_engagement_config 
         (stream_id, fake_viewers_enabled, fake_likes_enabled, 
          min_fake_viewers, max_fake_viewers, viewer_increase_rate, 
          viewer_decrease_rate, like_rate, engagement_multiplier)
-        VALUES (?, 1, 1, 15, 100, 5, 3, 3, 2.00)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
-    $stmt->execute([$streamId]);
+    $stmt->execute([
+        $streamId, 
+        $fakeViewersEnabled,
+        $fakeLikesEnabled,
+        $minFakeViewers,
+        $maxFakeViewers,
+        $viewerIncreaseRate,
+        $viewerDecreaseRate,
+        $likeRate,
+        $engagementMultiplier
+    ]);
     
     // Get the stream details
     $liveStream = new LiveStream();

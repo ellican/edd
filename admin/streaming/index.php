@@ -721,6 +721,73 @@ if ($database_available) {
                                 Enable automatic stream recording
                             </label>
                         </div>
+                        
+                        <hr>
+                        <h6 class="mb-3">Engagement Simulation Settings</h6>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Simulated engagement helps create a more lively atmosphere for new streams. 
+                            Real user engagement is always added on top of these numbers.
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" name="fake_viewers_enabled" 
+                                   id="fakeViewersEnabled" checked>
+                            <label class="form-check-label" for="fakeViewersEnabled">
+                                <strong>Enable Simulated Viewers</strong>
+                            </label>
+                        </div>
+                        <div class="row mb-3" id="viewerSettings">
+                            <div class="col-md-6">
+                                <label class="form-label">Minimum Simulated Viewers</label>
+                                <input type="number" class="form-control" name="min_fake_viewers" 
+                                       value="15" min="0" max="500">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Maximum Simulated Viewers</label>
+                                <input type="number" class="form-control" name="max_fake_viewers" 
+                                       value="100" min="0" max="1000">
+                            </div>
+                        </div>
+                        <div class="row mb-3" id="viewerRates">
+                            <div class="col-md-6">
+                                <label class="form-label">Viewer Increase Rate (per minute)</label>
+                                <input type="number" class="form-control" name="viewer_increase_rate" 
+                                       value="5" min="1" max="50">
+                                <small class="text-muted">How many viewers join per minute</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Viewer Decrease Rate (per minute)</label>
+                                <input type="number" class="form-control" name="viewer_decrease_rate" 
+                                       value="3" min="1" max="50">
+                                <small class="text-muted">How many viewers leave per minute</small>
+                            </div>
+                        </div>
+                        
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" name="fake_likes_enabled" 
+                                   id="fakeLikesEnabled" checked>
+                            <label class="form-check-label" for="fakeLikesEnabled">
+                                <strong>Enable Simulated Likes</strong>
+                            </label>
+                        </div>
+                        <div class="mb-3" id="likeSettings">
+                            <label class="form-label">Like Rate (per minute)</label>
+                            <input type="number" class="form-control" name="like_rate" 
+                                   value="3" min="1" max="50">
+                            <small class="text-muted">Average number of likes added per minute</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Engagement Multiplier</label>
+                            <input type="number" step="0.1" class="form-control" name="engagement_multiplier" 
+                                   value="2.0" min="0.5" max="10.0">
+                            <small class="text-muted">Simulated viewers = Real viewers × Multiplier (between min and max)</small>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Note:</strong> These settings apply to all new streams. Existing live streams will use their current configuration.
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -981,6 +1048,73 @@ if ($database_available) {
             }, 2000);
         });
         
+        // Toggle engagement settings visibility
+        document.getElementById('fakeViewersEnabled').addEventListener('change', function() {
+            const viewerSettings = document.getElementById('viewerSettings');
+            const viewerRates = document.getElementById('viewerRates');
+            if (this.checked) {
+                viewerSettings.style.display = '';
+                viewerRates.style.display = '';
+            } else {
+                viewerSettings.style.display = 'none';
+                viewerRates.style.display = 'none';
+            }
+        });
+        
+        document.getElementById('fakeLikesEnabled').addEventListener('change', function() {
+            const likeSettings = document.getElementById('likeSettings');
+            if (this.checked) {
+                likeSettings.style.display = '';
+            } else {
+                likeSettings.style.display = 'none';
+            }
+        });
+        
+        // Save stream settings including engagement config
+        document.getElementById('saveSettingsBtn').addEventListener('click', async function() {
+            const formData = new FormData(document.getElementById('streamSettingsForm'));
+            const settings = {};
+            
+            for (let [key, value] of formData.entries()) {
+                if (key === 'stream_enable_recording' || 
+                    key === 'fake_viewers_enabled' || 
+                    key === 'fake_likes_enabled') {
+                    settings[key] = document.querySelector(`[name="${key}"]`).checked ? 1 : 0;
+                } else {
+                    settings[key] = value;
+                }
+            }
+            
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+            
+            try {
+                const response = await fetch('/api/admin/streams/save-settings.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(settings)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Settings saved successfully!');
+                    bootstrap.Modal.getInstance(document.getElementById('streamSettingsModal')).hide();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to save settings. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save me-1"></i> Save Settings';
+            }
+        });
+        
         // Save stream settings
         document.getElementById('saveSettingsBtn').addEventListener('click', async function() {
             const form = document.getElementById('streamSettingsForm');
@@ -1027,7 +1161,7 @@ if ($database_available) {
         // Load settings when modal opens
         document.getElementById('streamSettingsModal').addEventListener('show.bs.modal', async function() {
             try {
-                const response = await fetch('/api/admin/streams/settings.php?action=get');
+                const response = await fetch('/api/admin/streams/get-settings.php');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -1036,12 +1170,16 @@ if ($database_available) {
                         const input = form.querySelector(`[name="${key}"]`);
                         if (input) {
                             if (input.type === 'checkbox') {
-                                input.checked = value === '1';
+                                input.checked = value == '1' || value === true;
                             } else {
                                 input.value = value;
                             }
                         }
                     }
+                    
+                    // Trigger change events to show/hide conditional fields
+                    document.getElementById('fakeViewersEnabled').dispatchEvent(new Event('change'));
+                    document.getElementById('fakeLikesEnabled').dispatchEvent(new Event('change'));
                 }
             } catch (error) {
                 console.error('Error loading settings:', error);
