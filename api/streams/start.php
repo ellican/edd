@@ -140,7 +140,7 @@ try {
             WHERE setting_key IN (
                 'fake_viewers_enabled', 'fake_likes_enabled', 'min_fake_viewers', 
                 'max_fake_viewers', 'viewer_increase_rate', 'viewer_decrease_rate', 
-                'like_rate', 'engagement_multiplier'
+                'like_rate'
             )
         ");
         $globalSettings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
@@ -158,14 +158,13 @@ try {
     $viewerIncreaseRate = isset($globalSettings['viewer_increase_rate']) ? (int)$globalSettings['viewer_increase_rate'] : 5;
     $viewerDecreaseRate = isset($globalSettings['viewer_decrease_rate']) ? (int)$globalSettings['viewer_decrease_rate'] : 3;
     $likeRate = isset($globalSettings['like_rate']) ? (int)$globalSettings['like_rate'] : 3;
-    $engagementMultiplier = isset($globalSettings['engagement_multiplier']) ? (float)$globalSettings['engagement_multiplier'] : 2.00;
     
     $stmt = $db->prepare("
         INSERT IGNORE INTO stream_engagement_config 
         (stream_id, fake_viewers_enabled, fake_likes_enabled, 
          min_fake_viewers, max_fake_viewers, viewer_increase_rate, 
-         viewer_decrease_rate, like_rate, engagement_multiplier)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         viewer_decrease_rate, like_rate)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
         $streamId, 
@@ -175,8 +174,7 @@ try {
         $maxFakeViewers,
         $viewerIncreaseRate,
         $viewerDecreaseRate,
-        $likeRate,
-        $engagementMultiplier
+        $likeRate
     ]);
     
     // Get the stream details

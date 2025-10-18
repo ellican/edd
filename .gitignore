@@ -44,6 +44,10 @@ uploads/*
 uploads/digital_products/*
 !uploads/digital_products/.htaccess
 !uploads/digital_products/README.md
+!uploads/streams/
+uploads/streams/*
+!uploads/streams/.gitkeep
+!uploads/streams/README.md
 *.backup
 phpmyadmin/tmp/
 phpmyadmin/tmp/

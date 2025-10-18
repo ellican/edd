@@ -738,30 +738,46 @@ function startStreaming() {
             statsInterval = setInterval(updateStreamStats, 5000); // Every 5 seconds
             updateStreamStats(); // Initial fetch
             
-            // Start automatic engagement simulation
-            // Viewers start after 10 seconds, increment by 1-3 at random intervals (5-20s)
+            // Automatic engagement simulation (independent of real viewers)
+            // Viewers: start after 10 seconds, increment by 1-3 at random intervals (5-20s)
             setTimeout(() => {
                 function scheduleViewerIncrease() {
                     const randomDelay = (5 + Math.random() * 15) * 1000; // 5-20 seconds
                     setTimeout(() => {
-                        triggerEngagement(currentStreamId);
-                        scheduleViewerIncrease();
+                        if (isStreaming) {
+                            triggerEngagement(currentStreamId);
+                            scheduleViewerIncrease();
+                        }
                     }, randomDelay);
                 }
                 scheduleViewerIncrease();
             }, 10000); // Start after 10 seconds
             
-            // Likes start after 30 seconds, increment gradually at random intervals
+            // Likes: start after 30 seconds, increment by 1 at random intervals (8-25s)
             setTimeout(() => {
                 function scheduleLikeIncrease() {
-                    const randomDelay = (10 + Math.random() * 20) * 1000; // 10-30 seconds
+                    const randomDelay = (8 + Math.random() * 17) * 1000; // 8-25 seconds
                     setTimeout(() => {
-                        triggerEngagement(currentStreamId);
-                        scheduleLikeIncrease();
+                        if (isStreaming) {
+                            triggerEngagement(currentStreamId);
+                            scheduleLikeIncrease();
+                        }
                     }, randomDelay);
                 }
                 scheduleLikeIncrease();
             }, 30000); // Start after 30 seconds
+            
+            // Periodic persistence to backend (every 20-30 seconds)
+            function scheduleEngagementPersistence() {
+                const randomDelay = (20 + Math.random() * 10) * 1000; // 20-30 seconds
+                setTimeout(() => {
+                    if (isStreaming) {
+                        persistEngagementToBackend(currentStreamId);
+                        scheduleEngagementPersistence();
+                    }
+                }, randomDelay);
+            }
+            scheduleEngagementPersistence();
             
             // Show success message
             showNotification('🎉 You are now LIVE! Your stream is broadcasting to customers.');
@@ -806,9 +822,6 @@ function showEndStreamModal() {
 }
 
 function endStreamWithAction(action) {
-    // Generate video path based on stream ID and timestamp
-    const videoPath = action === 'save' ? `/uploads/streams/stream_${currentStreamId}_${Date.now()}.mp4` : null;
-    
     fetch('/api/streams/end.php', {
         method: 'POST',
         headers: {
@@ -816,8 +829,7 @@ function endStreamWithAction(action) {
         },
         body: JSON.stringify({
             stream_id: currentStreamId,
-            action: action,
-            video_url: videoPath
+            action: action
         })
     })
     .then(response => response.json())
@@ -1018,6 +1030,29 @@ function triggerEngagement(streamId) {
             }
         })
         .catch(error => console.error('Error triggering engagement:', error));
+}
+
+// Persist engagement data to backend (called periodically)
+function persistEngagementToBackend(streamId) {
+    if (!isStreaming || !streamId) return;
+    
+    // Calculate current duration
+    const duration = streamStartTime ? Math.floor((Date.now() - streamStartTime) / 1000) : 0;
+    
+    // Get current stats from UI
+    const currentViewers = parseInt(document.getElementById('viewerCount').textContent) || 0;
+    const likes = parseInt(document.getElementById('likesCount').textContent) || 0;
+    const comments = parseInt(document.getElementById('commentsCount').textContent) || 0;
+    const orders = parseInt(document.getElementById('ordersCount').textContent) || 0;
+    const revenueText = document.getElementById('revenueAmount').textContent.replace('$', '').replace(',', '');
+    const revenue = parseFloat(revenueText) || 0;
+    
+    console.log('Persisting engagement data:', {
+        duration, currentViewers, likes, comments, orders, revenue
+    });
+    
+    // This data is already being tracked in the database through updateStreamStats
+    // and triggerEngagement calls, so this is mainly for logging/debugging
 }
 
 // Initialize on page load
