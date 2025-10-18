@@ -1009,14 +1009,19 @@ document.addEventListener('DOMContentLoaded', function() {
         // Trigger fake engagement immediately
         triggerFakeEngagement(currentStreamId);
         
-        // Update viewer count and comments periodically
-        setInterval(() => {
-            updateViewerCount(currentStreamId);
-            loadComments(currentStreamId);
-            triggerFakeEngagement(currentStreamId); // Add fake engagement periodically
-        }, 10000); // Every 10 seconds
+        // Update viewer count and comments periodically with random intervals (5-15 seconds)
+        function scheduleNextUpdate() {
+            const randomDelay = (5 + Math.random() * 10) * 1000; // 5-15 seconds in milliseconds
+            setTimeout(() => {
+                updateViewerCount(currentStreamId);
+                loadComments(currentStreamId);
+                triggerFakeEngagement(currentStreamId); // Add fake engagement periodically
+                scheduleNextUpdate(); // Schedule next update
+            }, randomDelay);
+        }
+        scheduleNextUpdate();
         
-        // Update stream timer
+        // Update stream timer every second
         updateStreamTimer(currentStreamId);
         setInterval(() => updateStreamTimer(currentStreamId), 1000);
     }

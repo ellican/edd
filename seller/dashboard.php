@@ -155,6 +155,20 @@ $notificationsStmt = db()->prepare($notificationsQuery);
 $notificationsStmt->execute([Session::getUserId()]);
 $notifications = $notificationsStmt->fetchAll();
 
+// Get recent saved streams for this vendor
+$recentStreamsQuery = "
+    SELECT 
+        ss.*,
+        TIMESTAMPDIFF(SECOND, ss.streamed_at, NOW()) as time_ago_seconds
+    FROM saved_streams ss
+    WHERE ss.seller_id = ?
+    ORDER BY ss.created_at DESC
+    LIMIT 20
+";
+$recentStreamsStmt = db()->prepare($recentStreamsQuery);
+$recentStreamsStmt->execute([Session::getUserId()]);
+$recentStreams = $recentStreamsStmt->fetchAll();
+
 $page_title = 'Seller Dashboard - ' . htmlspecialchars($vendorInfo['business_name']);
 includeHeader($page_title);
 ?>
@@ -424,6 +438,78 @@ includeHeader($page_title);
                 <?php endif; ?>
             </div>
         </div>
+
+        <!-- Recent Streams Section -->
+        <?php if (!empty($recentStreams)): ?>
+        <div class="dashboard-widget recent-streams-widget">
+            <div class="widget-header">
+                <h3>📼 Recent Streams</h3>
+                <a href="/seller/streams.php" class="view-all">View All</a>
+            </div>
+            <div class="widget-content">
+                <div class="recent-streams-scroll-container">
+                    <div class="recent-streams-grid">
+                        <?php foreach ($recentStreams as $stream): 
+                            $durationMinutes = floor($stream['duration'] / 60);
+                            $durationHours = floor($durationMinutes / 60);
+                            $durationDisplay = $durationHours > 0 
+                                ? sprintf('%dh %dm', $durationHours, $durationMinutes % 60)
+                                : sprintf('%dm', $durationMinutes);
+                            
+                            $timeAgo = formatTimeAgo($stream['streamed_at']);
+                        ?>
+                        <div class="stream-card">
+                            <div class="stream-thumbnail">
+                                <?php if ($stream['thumbnail_url']): ?>
+                                    <img src="<?php echo htmlspecialchars($stream['thumbnail_url']); ?>" 
+                                         alt="<?php echo htmlspecialchars($stream['stream_title']); ?>">
+                                <?php else: ?>
+                                    <div class="thumbnail-placeholder">
+                                        <span class="placeholder-icon">📹</span>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="stream-duration"><?php echo $durationDisplay; ?></div>
+                                <div class="stream-overlay">
+                                    <button class="play-btn" onclick="replayStream(<?php echo $stream['id']; ?>)" title="Replay Stream">
+                                        <svg width="40" height="40" viewBox="0 0 40 40" fill="white">
+                                            <circle cx="20" cy="20" r="18" fill="rgba(0,0,0,0.7)" />
+                                            <path d="M16 12l12 8-12 8z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="stream-info">
+                                <h4 class="stream-title" title="<?php echo htmlspecialchars($stream['stream_title']); ?>">
+                                    <?php echo htmlspecialchars(substr($stream['stream_title'], 0, 50)); ?>
+                                    <?php if (strlen($stream['stream_title']) > 50) echo '...'; ?>
+                                </h4>
+                                <div class="stream-stats">
+                                    <span class="stat-item">
+                                        <span class="stat-icon">👁️</span>
+                                        <span class="stat-value"><?php echo number_format($stream['views']); ?></span>
+                                    </span>
+                                    <span class="stat-item">
+                                        <span class="stat-icon">👍</span>
+                                        <span class="stat-value"><?php echo number_format($stream['likes']); ?></span>
+                                    </span>
+                                </div>
+                                <div class="stream-time"><?php echo $timeAgo; ?></div>
+                                <div class="stream-actions">
+                                    <button class="btn-action btn-replay" onclick="replayStream(<?php echo $stream['id']; ?>)" title="Replay">
+                                        ▶️ Replay
+                                    </button>
+                                    <button class="btn-action btn-delete" onclick="deleteStream(<?php echo $stream['id']; ?>)" title="Delete">
+                                        🗑️ Delete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
 
         <!-- Analytics Chart -->
         <div class="dashboard-widget analytics-widget">
@@ -770,6 +856,213 @@ includeHeader($page_title);
     margin-top: 4px;
 }
 
+/* Recent Streams Section */
+.recent-streams-widget {
+    grid-column: 1 / -1;
+}
+
+.recent-streams-scroll-container {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e0 #f7fafc;
+}
+
+.recent-streams-scroll-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.recent-streams-scroll-container::-webkit-scrollbar-track {
+    background: #f7fafc;
+    border-radius: 4px;
+}
+
+.recent-streams-scroll-container::-webkit-scrollbar-thumb {
+    background: #cbd5e0;
+    border-radius: 4px;
+}
+
+.recent-streams-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: #a0aec0;
+}
+
+.recent-streams-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+    padding: 4px 0;
+    min-width: min-content;
+}
+
+@media (min-width: 1280px) {
+    .recent-streams-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+.stream-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    min-width: 240px;
+}
+
+.stream-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+}
+
+.stream-thumbnail {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16/9;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    overflow: hidden;
+}
+
+.stream-thumbnail img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.thumbnail-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.placeholder-icon {
+    font-size: 48px;
+    opacity: 0.8;
+}
+
+.stream-duration {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.stream-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.stream-card:hover .stream-overlay {
+    opacity: 1;
+}
+
+.play-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    transform: scale(1);
+    transition: transform 0.2s ease;
+}
+
+.play-btn:hover {
+    transform: scale(1.1);
+}
+
+.stream-info {
+    padding: 12px;
+}
+
+.stream-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+    margin: 0 0 8px 0;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.stream-stats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.stat-icon {
+    font-size: 14px;
+}
+
+.stat-value {
+    font-weight: 500;
+}
+
+.stream-time {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-bottom: 8px;
+}
+
+.stream-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.btn-action {
+    flex: 1;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.btn-replay {
+    background: #10b981;
+    color: white;
+}
+
+.btn-replay:hover {
+    background: #059669;
+}
+
+.btn-delete {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #dc2626;
+}
+
 @media (max-width: 768px) {
     .seller-dashboard {
         padding: 16px;
@@ -852,6 +1145,69 @@ document.querySelectorAll('.chart-period').forEach(button => {
         console.log('Load data for period:', this.dataset.period);
     });
 });
+
+// Recent Streams Functions
+function replayStream(streamId) {
+    // Redirect to stream replay page or open modal
+    window.location.href = `/watch?stream_id=${streamId}`;
+}
+
+function deleteStream(streamId) {
+    if (!confirm('Are you sure you want to delete this stream? This action cannot be undone.')) {
+        return;
+    }
+    
+    // Send delete request
+    fetch(`/api/streams/delete-saved.php`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ stream_id: streamId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            showNotification('Stream deleted successfully', 'success');
+            // Reload page after a short delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Failed to delete stream', 'error');
+    });
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6'};
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        max-width: 400px;
+        font-weight: 600;
+    `;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.transition = 'opacity 0.3s';
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
 </script>
 
 <?php includeFooter(); ?>

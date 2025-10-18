@@ -122,17 +122,33 @@ try {
     }
     
     // Initialize engagement config for this stream if it doesn't exist
-    // Load global settings
-    $stmt = $db->query("
-        SELECT setting_key, setting_value 
-        FROM global_stream_settings 
-        WHERE setting_key IN (
-            'fake_viewers_enabled', 'fake_likes_enabled', 'min_fake_viewers', 
-            'max_fake_viewers', 'viewer_increase_rate', 'viewer_decrease_rate', 
-            'like_rate', 'engagement_multiplier'
-        )
-    ");
-    $globalSettings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    // Load global settings - ensure table exists first
+    try {
+        // Create settings table if it doesn't exist
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS global_stream_settings (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                setting_key VARCHAR(255) UNIQUE NOT NULL,
+                setting_value TEXT,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            )
+        ");
+        
+        $stmt = $db->query("
+            SELECT setting_key, setting_value 
+            FROM global_stream_settings 
+            WHERE setting_key IN (
+                'fake_viewers_enabled', 'fake_likes_enabled', 'min_fake_viewers', 
+                'max_fake_viewers', 'viewer_increase_rate', 'viewer_decrease_rate', 
+                'like_rate', 'engagement_multiplier'
+            )
+        ");
+        $globalSettings = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
+    } catch (Exception $e) {
+        // If there's any error, use empty settings (defaults will be used)
+        error_log("Error loading global settings: " . $e->getMessage());
+        $globalSettings = [];
+    }
     
     // Use global settings or defaults
     $fakeViewersEnabled = isset($globalSettings['fake_viewers_enabled']) ? (int)$globalSettings['fake_viewers_enabled'] : 1;
