@@ -33,17 +33,7 @@ if (!Session::isLoggedIn()) {
 try {
     $userId = Session::getUserId();
     
-    // Check if Stripe is configured before proceeding
-    $stripeConfig = checkStripeConfiguration();
-    if (!$stripeConfig['configured']) {
-        throw new Exception(
-            'Stripe is not configured. Please configure the following: ' . 
-            implode(', ', $stripeConfig['errors']) . 
-            '. Contact administrator to set up Stripe in the .env file.'
-        );
-    }
-    
-    // Initialize Stripe
+    // Initialize Stripe (will throw exception if keys not configured)
     $stripe = initStripe();
     
     // Get user's Stripe customer ID or create one
