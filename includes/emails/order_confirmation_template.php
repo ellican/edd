@@ -35,9 +35,14 @@
             text-align: center; 
         }
         .header h1 { 
-            margin: 0; 
-            font-size: 28px; 
-            font-weight: 300; 
+            margin: 0 0 10px 0; 
+            font-size: 32px; 
+            font-weight: 600; 
+        }
+        .header p {
+            margin: 0;
+            font-size: 16px;
+            opacity: 0.95;
         }
         .content { 
             padding: 40px 30px; 
@@ -93,11 +98,17 @@
             display: inline-block; 
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
             color: white !important; 
-            padding: 15px 30px; 
+            padding: 15px 35px; 
             text-decoration: none; 
-            border-radius: 5px; 
-            font-weight: bold; 
+            border-radius: 6px; 
+            font-weight: 600; 
             margin: 20px 0; 
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+            transition: all 0.3s ease;
+        }
+        .button:hover {
+            box-shadow: 0 6px 16px rgba(40, 167, 69, 0.4);
+            transform: translateY(-2px);
         }
         .footer { 
             background: #f8f9fa; 
