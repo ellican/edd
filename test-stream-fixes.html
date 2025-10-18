@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stream Engagement & Replay - Test Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f9fafb;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px;
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            color: white;
+            border-radius: 12px;
+        }
+        .section {
+            background: white;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .test-item {
+            padding: 20px;
+            margin: 15px 0;
+            background: #f3f4f6;
+            border-left: 4px solid #0654ba;
+            border-radius: 6px;
+        }
+        .test-item h3 {
+            margin-top: 0;
+            color: #1f2937;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .status.success {
+            background: #10b981;
+            color: white;
+        }
+        .status.warning {
+            background: #f59e0b;
+            color: white;
+        }
+        .status.error {
+            background: #dc2626;
+            color: white;
+        }
+        .code-block {
+            background: #1f2937;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        .demo-box {
+            border: 2px dashed #d1d5db;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .counter {
+            font-size: 48px;
+            font-weight: bold;
+            color: #dc2626;
+            margin: 20px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #0654ba;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 10px;
+            cursor: pointer;
+            border: none;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background: #053d8a;
+        }
+        .btn-success {
+            background: #10b981;
+        }
+        .btn-success:hover {
+            background: #059669;
+        }
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+        .checklist li {
+            padding: 10px;
+            margin: 5px 0;
+        }
+        .checklist li:before {
+            content: "✓ ";
+            color: #10b981;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔴 Stream Engagement & Replay - Fix Verification</h1>
+        <p>Test page to demonstrate the fixes for simulated engagement and stream replay</p>
+    </div>
+
+    <div class="section">
+        <h2>📊 Issue 1: Simulated Engagement</h2>
+        
+        <div class="test-item">
+            <h3>Problem: Viewer and like counts stuck at 0</h3>
+            <p><span class="status error">BEFORE FIX</span></p>
+            <div class="demo-box">
+                <div>👥 Viewers: <span class="counter">0</span></div>
+                <div>👍 Likes: <span class="counter">0</span></div>
+                <p style="color: #6b7280;">Numbers never changed during live streams</p>
+            </div>
+        </div>
+
+        <div class="test-item">
+            <h3>Solution: Real-time engagement updates</h3>
+            <p><span class="status success">AFTER FIX</span></p>
+            <div class="demo-box">
+                <div>👥 Viewers: <span class="counter" id="viewerCount">0</span></div>
+                <div>👍 Likes: <span class="counter" id="likeCount">0</span></div>
+                <button class="btn btn-success" onclick="simulateEngagement()">Start Simulation</button>
+                <p style="color: #6b7280; margin-top: 15px;">Updates every 5-15 seconds automatically</p>
+            </div>
+        </div>
+
+        <div class="test-item">
+            <h3>How It Works</h3>
+            <ul class="checklist">
+                <li>Initial fake viewers (5-20) added when stream starts</li>
+                <li>Frontend polls /api/streams/engagement.php every 5-15 seconds</li>
+                <li>Each poll adds 1-5 viewers and 0-2 likes</li>
+                <li>UI updates in real-time</li>
+                <li>Final counts saved when stream ends</li>
+            </ul>
+        </div>
+
+        <div class="test-item">
+            <h3>API Test</h3>
+            <div class="code-block">
+curl http://localhost/api/streams/engagement.php?stream_id=1
+
+Response:
+{
+  "success": true,
+  "stream_id": 1,
+  "engagement": {
+    "viewers_change": 3,
+    "likes_added": 1
+  },
+  "current_stats": {
+    "viewer_count": 18,
+    "like_count": 5,
+    "dislike_count": 0,
+    "comment_count": 0
+  }
+}
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>📹 Issue 2: Stream Replay</h2>
+        
+        <div class="test-item">
+            <h3>Problem: Clicking archived stream just refreshes page</h3>
+            <p><span class="status error">BEFORE FIX</span></p>
+            <p>URL: <code>live.php?stream=4&replay=1</code></p>
+            <p>Result: Page refreshes, no video player shown</p>
+        </div>
+
+        <div class="test-item">
+            <h3>Solution: Full replay interface</h3>
+            <p><span class="status success">AFTER FIX</span></p>
+            <p>URL: <code>live.php?stream=4&replay=1</code></p>
+            <div class="demo-box">
+                <div style="background: #000; aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; color: white; margin: 10px 0;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">▶️</div>
+                        <div>Video Player Loads Here</div>
+                    </div>
+                </div>
+                <p style="text-align: left;">
+                    ✓ Video player with archived stream<br>
+                    ✓ Stream title, description, duration<br>
+                    ✓ Engagement stats (viewers, likes, comments)<br>
+                    ✓ Featured products sidebar<br>
+                    ✓ Back to Live button
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>🗄️ Database Changes</h2>
+        
+        <div class="test-item">
+            <h3>New Tables Created</h3>
+            <ul>
+                <li><strong>stream_viewers</strong> - Tracks all viewers (real + fake)</li>
+                <li><strong>stream_engagement_config</strong> - Per-stream engagement settings</li>
+            </ul>
+        </div>
+
+        <div class="test-item">
+            <h3>Modified Tables</h3>
+            <ul>
+                <li><strong>stream_interactions</strong> - Added <code>is_fake</code> column</li>
+            </ul>
+        </div>
+
+        <div class="test-item">
+            <h3>Run Migration</h3>
+            <div class="code-block">
+php run_engagement_migration.php
+            </div>
+            <a href="/run_engagement_migration.php" class="btn">Run Migration Now</a>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>✅ Validation & Testing</h2>
+        
+        <div class="test-item">
+            <h3>Validate Installation</h3>
+            <div class="code-block">
+php validate_stream_engagement_system.php
+            </div>
+            <a href="/validate_stream_engagement_system.php" class="btn">Run Validation</a>
+        </div>
+
+        <div class="test-item">
+            <h3>Test Engagement</h3>
+            <ol>
+                <li>Start a live stream as vendor</li>
+                <li>Open <a href="/live.php">/live.php</a></li>
+                <li>Watch viewer count increase</li>
+                <li>Watch like count increase</li>
+                <li>End stream and verify counts saved</li>
+            </ol>
+        </div>
+
+        <div class="test-item">
+            <h3>Test Replay</h3>
+            <ol>
+                <li>Go to <a href="/live.php">/live.php</a></li>
+                <li>Click any archived stream in "Recent Streams"</li>
+                <li>Verify video player loads</li>
+                <li>Verify stats are displayed</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let viewerCount = 0;
+        let likeCount = 0;
+        let simulationRunning = false;
+
+        function simulateEngagement() {
+            if (simulationRunning) return;
+            simulationRunning = true;
+            
+            // Initial viewers (5-20)
+            viewerCount = Math.floor(Math.random() * 16) + 5;
+            document.getElementById('viewerCount').textContent = viewerCount;
+            
+            // Start periodic updates
+            setInterval(() => {
+                // Add 1-5 viewers
+                const viewersToAdd = Math.floor(Math.random() * 5) + 1;
+                viewerCount += viewersToAdd;
+                document.getElementById('viewerCount').textContent = viewerCount;
+                
+                // Maybe add likes (30% chance)
+                if (Math.random() < 0.3) {
+                    const likesToAdd = Math.floor(Math.random() * 2) + 1;
+                    likeCount += likesToAdd;
+                    document.getElementById('likeCount').textContent = likeCount;
+                }
+            }, 2000); // Update every 2 seconds for demo (actual: 5-15 seconds)
+        }
+    </script>
+</body>
+</html>
