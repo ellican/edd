@@ -817,9 +817,9 @@ function endStreamWithAction(action) {
                 showNotification('✅ Stream ended successfully!');
             }
             
-            // Redirect to dashboard after a moment
+            // Redirect to streams dashboard after a moment
             setTimeout(() => {
-                window.location.href = '/seller/live.php';
+                window.location.href = '/seller/streams.php';
             }, 2000);
         } else {
             alert('Error ending stream: ' + data.error);

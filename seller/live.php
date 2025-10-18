@@ -57,20 +57,20 @@ include __DIR__ . '/../templates/seller-header.php';
             </div>
 
             <div class="action-card" style="background: white; border: 2px solid #e5e7eb; padding: 24px; border-radius: 12px;">
+                <div style="font-size: 32px; margin-bottom: 12px;">📺</div>
+                <h3 style="font-size: 18px; margin-bottom: 8px; font-weight: 600; color: #333;">Manage Streams</h3>
+                <p style="font-size: 14px; color: #666; margin-bottom: 16px;">View active, scheduled, and past streams</p>
+                <a href="/seller/streams.php" class="btn" style="background: #6b7280; color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-block;">
+                    View Dashboard
+                </a>
+            </div>
+
+            <div class="action-card" style="background: white; border: 2px solid #e5e7eb; padding: 24px; border-radius: 12px;">
                 <div style="font-size: 32px; margin-bottom: 12px;">📅</div>
                 <h3 style="font-size: 18px; margin-bottom: 8px; font-weight: 600; color: #333;">Schedule Event</h3>
                 <p style="font-size: 14px; color: #666; margin-bottom: 16px;">Plan and promote upcoming live events</p>
                 <button class="btn" style="background: #3b82f6; color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s;" onclick="scheduleEvent()">
                     Schedule
-                </button>
-            </div>
-
-            <div class="action-card" style="background: white; border: 2px solid #e5e7eb; padding: 24px; border-radius: 12px;">
-                <div style="font-size: 32px; margin-bottom: 12px;">📊</div>
-                <h3 style="font-size: 18px; margin-bottom: 8px; font-weight: 600; color: #333;">View Analytics</h3>
-                <p style="font-size: 14px; color: #666; margin-bottom: 16px;">Track views, engagement, and sales</p>
-                <button class="btn" style="background: #10b981; color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s;" onclick="viewAnalytics()">
-                    View Stats
                 </button>
             </div>
         </div>
