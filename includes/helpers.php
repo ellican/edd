@@ -283,9 +283,18 @@ if (!function_exists('isKycVerified')) {
         try {
             $pdo = db();
             
-            // Check kyc_verifications table for approved status
-            $stmt = $pdo->prepare("SELECT status FROM kyc_verifications WHERE user_id = ? AND status = 'approved' LIMIT 1");
+            // First get the vendor_id for this user
+            $stmt = $pdo->prepare("SELECT id FROM vendors WHERE user_id = ? LIMIT 1");
             $stmt->execute([$userId]);
+            $vendor = $stmt->fetch();
+            
+            if (!$vendor) {
+                return false; // User is not a vendor
+            }
+            
+            // Check seller_kyc table for approved status
+            $stmt = $pdo->prepare("SELECT verification_status FROM seller_kyc WHERE vendor_id = ? AND verification_status = 'approved' LIMIT 1");
+            $stmt->execute([$vendor['id']]);
             $result = $stmt->fetch();
             
             return !empty($result);
@@ -329,9 +338,9 @@ if (!function_exists('canSellerListProducts')) {
                 ];
             }
             
-            // Check KYC verification status
-            $stmt = $pdo->prepare("SELECT status FROM kyc_verifications WHERE user_id = ? LIMIT 1");
-            $stmt->execute([$userId]);
+            // Check KYC verification status in seller_kyc table
+            $stmt = $pdo->prepare("SELECT verification_status FROM seller_kyc WHERE vendor_id = ? LIMIT 1");
+            $stmt->execute([$vendor['id']]);
             $kycVerification = $stmt->fetch();
             
             if (!$kycVerification) {
@@ -342,23 +351,29 @@ if (!function_exists('canSellerListProducts')) {
                 ];
             }
             
-            if ($kycVerification['status'] === 'approved') {
+            if ($kycVerification['verification_status'] === 'approved') {
                 return [
                     'can_sell' => true,
                     'message' => 'You are eligible to sell products.',
                     'kyc_status' => 'approved'
                 ];
-            } elseif ($kycVerification['status'] === 'pending' || $kycVerification['status'] === 'under_review') {
+            } elseif ($kycVerification['verification_status'] === 'pending' || $kycVerification['verification_status'] === 'in_review') {
                 return [
                     'can_sell' => false,
                     'message' => 'Your KYC verification is pending review. You will be able to sell once approved.',
-                    'kyc_status' => $kycVerification['status']
+                    'kyc_status' => $kycVerification['verification_status']
                 ];
-            } elseif ($kycVerification['status'] === 'rejected') {
+            } elseif ($kycVerification['verification_status'] === 'rejected') {
                 return [
                     'can_sell' => false,
                     'message' => 'Your KYC verification was rejected. Please contact support or resubmit your documents.',
                     'kyc_status' => 'rejected'
+                ];
+            } elseif ($kycVerification['verification_status'] === 'requires_resubmission') {
+                return [
+                    'can_sell' => false,
+                    'message' => 'Your KYC documents require resubmission. Please update your documents.',
+                    'kyc_status' => 'requires_resubmission'
                 ];
             }
             
