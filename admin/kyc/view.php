@@ -106,7 +106,7 @@ $page_title = 'KYC Review - ' . ($kyc['business_name'] ?: $kyc['first_name'] . '
                         </div>
                         <div class="info-item">
                             <label>Submitted:</label>
-                            <span><?php echo date('F j, Y g:i A', strtotime($kyc['created_at'])); ?></span>
+                            <span><?php echo date('F j, Y g:i A', strtotime($kyc['submitted_at'])); ?></span>
                         </div>
                     </div>
                 </div>

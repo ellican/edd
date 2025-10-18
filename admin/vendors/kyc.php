@@ -130,6 +130,140 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     );
                 }
                 break;
+                
+            case 'edit_document':
+                $doc_category = $_POST['doc_category'] ?? '';
+                $doc_type = $_POST['doc_type'] ?? '';
+                $notes = $_POST['notes'] ?? '';
+                
+                // Get current KYC submission
+                $kyc = Database::query(
+                    "SELECT * FROM seller_kyc WHERE vendor_id = ?",
+                    [$vendor_id]
+                )->fetch();
+                
+                if (!$kyc) {
+                    throw new Exception('KYC submission not found');
+                }
+                
+                // Get the category column name
+                $category_column = match($doc_category) {
+                    'identity' => 'identity_documents',
+                    'address' => 'address_verification',
+                    'bank' => 'bank_verification',
+                    'business' => 'business_documents',
+                    default => throw new Exception('Invalid document category')
+                };
+                
+                // Decode current documents
+                $documents = json_decode($kyc[$category_column] ?? '{}', true) ?: [];
+                
+                if (!isset($documents[$doc_type])) {
+                    throw new Exception('Document not found');
+                }
+                
+                // Handle file upload if provided
+                if (isset($_FILES['document_file']) && $_FILES['document_file']['error'] === UPLOAD_ERR_OK) {
+                    $upload_dir = __DIR__ . '/../../uploads/kyc/' . $vendor_id . '/';
+                    if (!is_dir($upload_dir)) {
+                        mkdir($upload_dir, 0755, true);
+                    }
+                    
+                    $file_extension = pathinfo($_FILES['document_file']['name'], PATHINFO_EXTENSION);
+                    $new_filename = $doc_type . '_' . time() . '.' . $file_extension;
+                    $new_filepath = $upload_dir . $new_filename;
+                    
+                    if (move_uploaded_file($_FILES['document_file']['tmp_name'], $new_filepath)) {
+                        // Delete old file if it exists
+                        if (isset($documents[$doc_type]['file_path']) && file_exists($documents[$doc_type]['file_path'])) {
+                            unlink($documents[$doc_type]['file_path']);
+                        }
+                        
+                        // Update file path
+                        $documents[$doc_type]['file_path'] = '/uploads/kyc/' . $vendor_id . '/' . $new_filename;
+                        $documents[$doc_type]['original_name'] = $_FILES['document_file']['name'];
+                    }
+                }
+                
+                // Update document number if provided
+                if (!empty($_POST['document_number'])) {
+                    $documents[$doc_type]['document_number'] = $_POST['document_number'];
+                }
+                
+                // Update the database
+                Database::query(
+                    "UPDATE seller_kyc SET {$category_column} = ? WHERE vendor_id = ?",
+                    [json_encode($documents), $vendor_id]
+                );
+                
+                // Log the action
+                Database::query(
+                    "INSERT INTO vendor_audit_logs (vendor_id, admin_id, action, action_type, new_value, reason, ip_address) 
+                     VALUES (?, ?, 'kyc_document_edited', 'kyc_verification', ?, ?, ?)",
+                    [$vendor_id, $admin_id, "{$doc_category}/{$doc_type}", $notes, $_SERVER['REMOTE_ADDR'] ?? '']
+                );
+                
+                $_SESSION['success_message'] = 'Document updated successfully.';
+                break;
+                
+            case 'delete_document':
+                $doc_category = $_POST['doc_category'] ?? '';
+                $doc_type = $_POST['doc_type'] ?? '';
+                $deletion_reason = $_POST['deletion_reason'] ?? '';
+                
+                if (empty($deletion_reason)) {
+                    throw new Exception('Deletion reason is required');
+                }
+                
+                // Get current KYC submission
+                $kyc = Database::query(
+                    "SELECT * FROM seller_kyc WHERE vendor_id = ?",
+                    [$vendor_id]
+                )->fetch();
+                
+                if (!$kyc) {
+                    throw new Exception('KYC submission not found');
+                }
+                
+                // Get the category column name
+                $category_column = match($doc_category) {
+                    'identity' => 'identity_documents',
+                    'address' => 'address_verification',
+                    'bank' => 'bank_verification',
+                    'business' => 'business_documents',
+                    default => throw new Exception('Invalid document category')
+                };
+                
+                // Decode current documents
+                $documents = json_decode($kyc[$category_column] ?? '{}', true) ?: [];
+                
+                if (!isset($documents[$doc_type])) {
+                    throw new Exception('Document not found');
+                }
+                
+                // Delete file from filesystem
+                if (isset($documents[$doc_type]['file_path']) && file_exists($documents[$doc_type]['file_path'])) {
+                    unlink($documents[$doc_type]['file_path']);
+                }
+                
+                // Remove from array
+                unset($documents[$doc_type]);
+                
+                // Update the database
+                Database::query(
+                    "UPDATE seller_kyc SET {$category_column} = ? WHERE vendor_id = ?",
+                    [json_encode($documents), $vendor_id]
+                );
+                
+                // Log the action
+                Database::query(
+                    "INSERT INTO vendor_audit_logs (vendor_id, admin_id, action, action_type, new_value, reason, ip_address) 
+                     VALUES (?, ?, 'kyc_document_deleted', 'kyc_verification', ?, ?, ?)",
+                    [$vendor_id, $admin_id, "{$doc_category}/{$doc_type}", $deletion_reason, $_SERVER['REMOTE_ADDR'] ?? '']
+                );
+                
+                $_SESSION['success_message'] = 'Document deleted successfully.';
+                break;
         }
         
         header('Location: /admin/vendors/kyc.php?id=' . $vendor_id);
@@ -386,9 +520,20 @@ $page_title = 'KYC Management: ' . htmlspecialchars($vendor['business_name']);
                             <?php if (!empty($doc['document_number'])): ?>
                             <p class="mb-1"><small>Number: <?php echo htmlspecialchars($doc['document_number']); ?></small></p>
                             <?php endif; ?>
-                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
-                                <i class="fas fa-eye me-1"></i> View
-                            </a>
+                            <div class="btn-group mt-2" role="group">
+                                <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye me-1"></i> View
+                                </a>
+                                <a href="/admin/kyc/download.php?id=<?php echo $kyc_submission['id']; ?>&type=seller&doc_category=identity&doc_type=<?php echo urlencode($key); ?>" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-download me-1"></i> Download
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="editDocument('identity', '<?php echo htmlspecialchars($key); ?>')">
+                                    <i class="fas fa-edit me-1"></i> Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteDocument('identity', '<?php echo htmlspecialchars($key); ?>')">
+                                    <i class="fas fa-trash me-1"></i> Delete
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <?php endforeach; ?>
@@ -409,9 +554,20 @@ $page_title = 'KYC Management: ' . htmlspecialchars($vendor['business_name']);
                         <div class="border p-3 rounded">
                             <strong><?php echo ucfirst(str_replace('_', ' ', $key)); ?></strong>
                             <p class="mb-1 text-muted"><small><?php echo htmlspecialchars($doc['original_name'] ?? 'Document'); ?></small></p>
-                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
-                                <i class="fas fa-eye me-1"></i> View
-                            </a>
+                            <div class="btn-group mt-2" role="group">
+                                <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye me-1"></i> View
+                                </a>
+                                <a href="/admin/kyc/download.php?id=<?php echo $kyc_submission['id']; ?>&type=seller&doc_category=address&doc_type=<?php echo urlencode($key); ?>" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-download me-1"></i> Download
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="editDocument('address', '<?php echo htmlspecialchars($key); ?>')">
+                                    <i class="fas fa-edit me-1"></i> Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteDocument('address', '<?php echo htmlspecialchars($key); ?>')">
+                                    <i class="fas fa-trash me-1"></i> Delete
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <?php endforeach; ?>
@@ -435,9 +591,20 @@ $page_title = 'KYC Management: ' . htmlspecialchars($vendor['business_name']);
                             <?php if (!empty($doc['account_number'])): ?>
                             <p class="mb-1"><small>Account: ****<?php echo htmlspecialchars($doc['account_number']); ?></small></p>
                             <?php endif; ?>
-                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
-                                <i class="fas fa-eye me-1"></i> View
-                            </a>
+                            <div class="btn-group mt-2" role="group">
+                                <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye me-1"></i> View
+                                </a>
+                                <a href="/admin/kyc/download.php?id=<?php echo $kyc_submission['id']; ?>&type=seller&doc_category=bank&doc_type=<?php echo urlencode($key); ?>" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-download me-1"></i> Download
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="editDocument('bank', '<?php echo htmlspecialchars($key); ?>')">
+                                    <i class="fas fa-edit me-1"></i> Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteDocument('bank', '<?php echo htmlspecialchars($key); ?>')">
+                                    <i class="fas fa-trash me-1"></i> Delete
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <?php endforeach; ?>
@@ -458,9 +625,20 @@ $page_title = 'KYC Management: ' . htmlspecialchars($vendor['business_name']);
                         <div class="border p-3 rounded">
                             <strong><?php echo ucfirst(str_replace('_', ' ', $key)); ?></strong>
                             <p class="mb-1 text-muted"><small><?php echo htmlspecialchars($doc['original_name'] ?? 'Document'); ?></small></p>
-                            <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
-                                <i class="fas fa-eye me-1"></i> View
-                            </a>
+                            <div class="btn-group mt-2" role="group">
+                                <a href="<?php echo htmlspecialchars($doc['file_path']); ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye me-1"></i> View
+                                </a>
+                                <a href="/admin/kyc/download.php?id=<?php echo $kyc_submission['id']; ?>&type=seller&doc_category=business&doc_type=<?php echo urlencode($key); ?>" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-download me-1"></i> Download
+                                </a>
+                                <button type="button" class="btn btn-sm btn-outline-warning" onclick="editDocument('business', '<?php echo htmlspecialchars($key); ?>')">
+                                    <i class="fas fa-edit me-1"></i> Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteDocument('business', '<?php echo htmlspecialchars($key); ?>')">
+                                    <i class="fas fa-trash me-1"></i> Delete
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <?php endforeach; ?>
@@ -527,10 +705,86 @@ $page_title = 'KYC Management: ' . htmlspecialchars($vendor['business_name']);
         </div>
     </div>
 
+    <!-- Edit Document Modal -->
+    <div class="modal fade" id="editDocModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" enctype="multipart/form-data">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="edit_document">
+                    <input type="hidden" name="doc_category" id="editDocCategory">
+                    <input type="hidden" name="doc_type" id="editDocType">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Document</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Document Type</label>
+                            <input type="text" class="form-control" id="editDocDisplayName" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Replace Document</label>
+                            <input type="file" class="form-control" name="document_file" accept="image/*,.pdf">
+                            <small class="text-muted">Upload a new file to replace the existing document</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Document Number (optional)</label>
+                            <input type="text" class="form-control" name="document_number" id="editDocNumber">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="notes" rows="3" placeholder="Add any notes about this update..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning">Update Document</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteDocModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST">
+                    <?php echo csrfTokenInput(); ?>
+                    <input type="hidden" name="action" value="delete_document">
+                    <input type="hidden" name="doc_category" id="deleteDocCategory">
+                    <input type="hidden" name="doc_type" id="deleteDocType">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title">Delete Document</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Warning:</strong> This action cannot be undone.
+                        </div>
+                        <p>Are you sure you want to delete the <strong id="deleteDocDisplayName"></strong> document?</p>
+                        <div class="mb-3">
+                            <label class="form-label">Reason for deletion *</label>
+                            <textarea class="form-control" name="deletion_reason" rows="3" required placeholder="Explain why this document is being deleted..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger">Delete Document</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const statusModal = new bootstrap.Modal(document.getElementById('statusModal'));
         const resubmitModal = new bootstrap.Modal(document.getElementById('resubmitModal'));
+        const editDocModal = new bootstrap.Modal(document.getElementById('editDocModal'));
+        const deleteDocModal = new bootstrap.Modal(document.getElementById('deleteDocModal'));
 
         function updateStatus(status) {
             document.getElementById('newStatus').value = status;
@@ -559,6 +813,20 @@ $page_title = 'KYC Management: ' . htmlspecialchars($vendor['business_name']);
 
         function requestResubmission() {
             resubmitModal.show();
+        }
+
+        function editDocument(category, docType) {
+            document.getElementById('editDocCategory').value = category;
+            document.getElementById('editDocType').value = docType;
+            document.getElementById('editDocDisplayName').value = docType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            editDocModal.show();
+        }
+
+        function deleteDocument(category, docType) {
+            document.getElementById('deleteDocCategory').value = category;
+            document.getElementById('deleteDocType').value = docType;
+            document.getElementById('deleteDocDisplayName').textContent = docType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            deleteDocModal.show();
         }
     </script>
 </body>
