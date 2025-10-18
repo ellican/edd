@@ -55,13 +55,14 @@ class FakeEngagementGenerator {
                 min($config['max_fake_viewers'], $config['min_fake_viewers'] + rand(0, 30))
             );
             
-            // Add some randomness to the increase/decrease
+            // Add viewers incrementally: 1-3 per increment as per requirements
             $change = 0;
             if ($currentFake < $targetFake) {
-                // Add viewers (1-5 per increment as per requirements)
-                $maxIncrease = min($config['viewer_increase_rate'], 5); // Cap at 5 per requirement
-                $change = rand(1, $maxIncrease);
-                $this->addFakeViewers($streamId, min($change, $targetFake - $currentFake));
+                // Add viewers (1-3 per increment)
+                $change = rand(1, 3); // Random 1-3 viewers
+                $actualIncrease = min($change, $targetFake - $currentFake);
+                $this->addFakeViewers($streamId, $actualIncrease);
+                $change = $actualIncrease;
             } elseif ($currentFake > $targetFake) {
                 // Remove some viewers (natural churn)
                 $maxDecrease = $config['viewer_decrease_rate'];

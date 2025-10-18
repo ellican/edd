@@ -4,6 +4,9 @@ RewriteEngine On
 # Disable MultiViews to prevent ambiguity
 Options -MultiViews
 
+# Sitemap.xml routing
+RewriteRule ^sitemap\.xml$ sitemap.xml.php [L]
+
 # Admin panel routing - improved to prevent loops and handle existing files
 # Check that requested file doesn't already exist
 RewriteCond %{REQUEST_FILENAME} !-f

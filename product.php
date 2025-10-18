@@ -419,9 +419,32 @@ if ($category) {
 }
 $breadcrumbs[] = ['label' => $product['name'], 'url' => null];
 
+// Load SEO helper
+require_once __DIR__ . '/includes/seo.php';
+
 // Page meta
 $pageTitle = $product['name'] . ' - Feza Marketplace';
 $metaDescription = $product['short_description'] ?? substr(strip_tags($product['description'] ?? ''), 0, 160);
+
+// Generate comprehensive SEO meta tags
+$seoConfig = [
+    'title' => $pageTitle,
+    'description' => $metaDescription,
+    'keywords' => implode(', ', array_filter([
+        $product['name'],
+        $product['keywords'] ?? '',
+        $category['name'] ?? '',
+        'buy online', 'marketplace', 'shop'
+    ])),
+    'image' => $product['image_url'] ?? '/assets/images/no-image.png',
+    'url' => 'https://' . ($_SERVER['HTTP_HOST'] ?? 'fezamarket.com') . '/product/' . ($product['slug'] ?? $product['id']),
+    'type' => 'product',
+    'canonical' => 'https://' . ($_SERVER['HTTP_HOST'] ?? 'fezamarket.com') . '/product/' . ($product['slug'] ?? $product['id'])
+];
+
+// Generate structured data schemas
+$productSchema = SEO::generateProductSchema($product, $vendorInfo ?? null);
+$breadcrumbSchema = SEO::generateBreadcrumbSchema($breadcrumbs);
 
 // Helper functions
 function h($string) {
@@ -434,7 +457,11 @@ if (file_exists(__DIR__ . '/templates/header.php')) {
 } elseif (file_exists(__DIR__ . '/includes/header.php')) {
     include __DIR__ . '/includes/header.php';
 } else {
-    echo "<!DOCTYPE html><html><head><title>" . h($pageTitle) . "</title></head><body>";
+    echo "<!DOCTYPE html><html><head>";
+    echo SEO::generateMetaTags($seoConfig);
+    echo $productSchema;
+    echo $breadcrumbSchema;
+    echo "</head><body>";
 }
 ?>
 

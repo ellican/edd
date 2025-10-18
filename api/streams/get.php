@@ -39,9 +39,28 @@ try {
         exit;
     }
     
+    // Generate stream URL based on status
+    $streamUrl = null;
+    $isLive = $stream['status'] === 'live';
+    
+    if ($isLive && !empty($stream['stream_key'])) {
+        // For live streams, use HLS endpoint (assuming HLS streaming is set up)
+        // Format: /streams/hls/{stream_key}/playlist.m3u8
+        $streamUrl = '/streams/hls/' . $stream['stream_key'] . '/playlist.m3u8';
+    } elseif ($stream['status'] === 'archived' && !empty($stream['video_path'])) {
+        // For archived streams, use the recorded video path
+        $streamUrl = $stream['video_path'];
+    }
+    
+    // Add stream URL and live status to response
+    $stream['stream_url'] = $streamUrl;
+    $stream['is_live'] = $isLive;
+    
     echo json_encode([
         'success' => true,
-        'stream' => $stream
+        'stream' => $stream,
+        'stream_url' => $streamUrl,
+        'is_live' => $isLive
     ]);
     
 } catch (Exception $e) {
