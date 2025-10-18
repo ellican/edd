@@ -92,16 +92,25 @@ try {
         ]);
         
     } else {
-        // Create a new stream
+        // Create a new stream with unique stream_key
+        // Generate unique stream key
+        $streamKey = sprintf(
+            'stream_%d_%d_%s',
+            $vendorId,
+            time(),
+            substr(md5(uniqid(rand(), true)), 0, 16)
+        );
+        
         $stmt = $db->prepare("
             INSERT INTO live_streams 
-            (vendor_id, title, description, thumbnail_url, stream_url, 
+            (vendor_id, stream_key, title, description, thumbnail_url, stream_url, 
              status, chat_enabled, started_at, created_at)
-            VALUES (?, ?, ?, ?, ?, 'live', ?, NOW(), NOW())
+            VALUES (?, ?, ?, ?, ?, ?, 'live', ?, NOW(), NOW())
         ");
         
         $stmt->execute([
             $vendorId,
+            $streamKey,
             $data['title'],
             $data['description'] ?? null,
             $data['thumbnail_url'] ?? null,
