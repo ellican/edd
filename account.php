@@ -1046,8 +1046,8 @@ async function addPaymentMethod() {
     if (!stripe) {
         // Get Stripe publishable key from meta tag (should be set in header)
         const stripeKey = document.querySelector('meta[name="stripe-publishable-key"]')?.content;
-        if (!stripeKey) {
-            alert('Stripe is not configured. Please contact support.');
+        if (!stripeKey || stripeKey.trim() === '') {
+            alert('Stripe payment processing is not configured on this site.\n\nTo enable payment methods, the site administrator needs to:\n1. Add Stripe API keys to the .env file\n2. Set STRIPE_LIVE_PUBLISHABLE_KEY (for live mode) or STRIPE_TEST_PUBLISHABLE_KEY (for test mode)\n3. Set STRIPE_MODE=live (or test)\n\nPlease contact support for assistance.');
             return;
         }
         stripe = Stripe(stripeKey);
