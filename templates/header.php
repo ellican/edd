@@ -89,6 +89,25 @@ $page_title = $page_title ?? 'Feza - Electronics, Cars, Fashion, Collectibles & 
     <!-- CSRF Token -->
     <meta name="csrf-token" content="<?php echo csrfToken(); ?>">
     
+    <!-- Stripe Publishable Key -->
+    <?php
+    $stripePublishableKey = '';
+    if (file_exists(BASE_PATH . '/includes/stripe/init_stripe.php')) {
+        require_once BASE_PATH . '/includes/stripe/init_stripe.php';
+        try {
+            $stripePublishableKey = getStripePublishableKey() ?? '';
+        } catch (Exception $e) {
+            error_log("[STRIPE] Error getting publishable key in header: " . $e->getMessage());
+            $stripePublishableKey = '';
+        }
+    }
+    ?>
+    <!-- Always render meta tag so JavaScript can detect if Stripe is configured -->
+    <meta name="stripe-publishable-key" content="<?php echo htmlspecialchars($stripePublishableKey); ?>">
+    <?php if (!empty($stripePublishableKey)): ?>
+    <script src="https://js.stripe.com/v3/"></script>
+    <?php endif; ?>
+    
     <!-- CSS Files -->
     <link rel="stylesheet" href="/css/styles.css">
     <link rel="stylesheet" href="/css/icons.css">
