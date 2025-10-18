@@ -47,9 +47,10 @@ try {
     
     $db = db();
     
-    // Verify the stream belongs to this vendor
+    // Verify the stream belongs to this vendor and get user_id
     $stmt = $db->prepare("
-        SELECT ls.*, 
+        SELECT ls.*,
+               v.user_id as seller_user_id,
                (SELECT COUNT(*) FROM stream_viewers WHERE stream_id = ls.id) as total_viewers,
                (SELECT COUNT(*) FROM stream_interactions WHERE stream_id = ls.id AND interaction_type = 'like') as total_likes,
                (SELECT COUNT(*) FROM stream_interactions WHERE stream_id = ls.id AND interaction_type = 'dislike') as total_dislikes,
@@ -57,6 +58,7 @@ try {
                (SELECT COALESCE(SUM(amount), 0) FROM stream_orders WHERE stream_id = ls.id) as total_revenue,
                (SELECT COUNT(*) FROM stream_orders WHERE stream_id = ls.id) as orders_count
         FROM live_streams ls
+        JOIN vendors v ON ls.vendor_id = v.id
         WHERE ls.id = ? AND ls.vendor_id = ?
     ");
     $stmt->execute([$streamId, $vendorInfo['id']]);
@@ -109,19 +111,15 @@ try {
         $stmt->execute([$videoUrl, $streamId]);
         
         // Also save to saved_streams table for backward compatibility
+        // Note: saved_streams uses different column names (seller_id, stream_title, etc.)
         $stmt = $db->prepare("
             INSERT INTO saved_streams 
-            (stream_id, vendor_id, title, description, video_url, thumbnail_url, 
-             duration, viewer_count, like_count, total_revenue, streamed_at, saved_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-            ON DUPLICATE KEY UPDATE
-                viewer_count = VALUES(viewer_count),
-                like_count = VALUES(like_count),
-                total_revenue = VALUES(total_revenue)
+            (seller_id, stream_title, stream_description, video_url, thumbnail_url, 
+             duration, views, likes, dislikes, streamed_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ");
         $stmt->execute([
-            $streamId,
-            $vendorInfo['id'],
+            $stream['seller_user_id'], // saved_streams references users.id, not vendors.id
             $stream['title'],
             $stream['description'],
             $videoUrl ?? $stream['stream_url'],
@@ -129,7 +127,7 @@ try {
             $duration,
             $stream['total_viewers'],
             $stream['total_likes'],
-            $stream['total_revenue'],
+            $stream['total_dislikes'],
             $stream['started_at']
         ]);
         
