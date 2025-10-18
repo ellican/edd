@@ -43,7 +43,7 @@ try {
     
     $streamId = (int)$data['stream_id'];
     $action = $data['action'] ?? 'save'; // 'save' or 'delete'
-    $videoUrl = $data['video_url'] ?? null;
+    $videoUrl = null;
     
     $db = db();
     
@@ -56,7 +56,8 @@ try {
                (SELECT COUNT(*) FROM stream_interactions WHERE stream_id = ls.id AND interaction_type = 'dislike') as total_dislikes,
                (SELECT COUNT(*) FROM stream_interactions WHERE stream_id = ls.id AND interaction_type = 'comment') as total_comments,
                (SELECT COALESCE(SUM(amount), 0) FROM stream_orders WHERE stream_id = ls.id) as total_revenue,
-               (SELECT COUNT(*) FROM stream_orders WHERE stream_id = ls.id) as orders_count
+               (SELECT COUNT(*) FROM stream_orders WHERE stream_id = ls.id) as orders_count,
+               (SELECT MAX(viewer_count) FROM live_streams WHERE id = ls.id) as peak_viewers
         FROM live_streams ls
         JOIN vendors v ON ls.vendor_id = v.id
         WHERE ls.id = ? AND ls.vendor_id = ?
@@ -89,7 +90,8 @@ try {
             like_count = ?,
             dislike_count = ?,
             comment_count = ?,
-            total_revenue = ?
+            total_revenue = ?,
+            max_viewers = ?
         WHERE id = ?
     ");
     $stmt->execute([
@@ -98,19 +100,49 @@ try {
         $stream['total_dislikes'],
         $stream['total_comments'],
         $stream['total_revenue'],
+        $stream['peak_viewers'],
         $streamId
     ]);
     
     if ($action === 'save') {
+        // Generate video path: /uploads/streams/{seller_id}/{stream_id}.mp4
+        // Create directory structure if it doesn't exist
+        $uploadsBase = $_SERVER['DOCUMENT_ROOT'] . '/uploads/streams';
+        $sellerDir = $uploadsBase . '/' . $vendorInfo['id'];
+        
+        if (!file_exists($uploadsBase)) {
+            mkdir($uploadsBase, 0755, true);
+        }
+        if (!file_exists($sellerDir)) {
+            mkdir($sellerDir, 0755, true);
+        }
+        
+        // Generate the video file path (web-accessible path)
+        $videoUrl = '/uploads/streams/' . $vendorInfo['id'] . '/' . $streamId . '.mp4';
+        
+        // Note: Actual video recording/encoding would happen here in production
+        // This would involve:
+        // 1. Capturing the WebRTC stream to server
+        // 2. Encoding to H.264/AAC MP4 format
+        // 3. Optionally generating HLS variants
+        // For now, we're storing the path where the video would be saved
         // Mark stream as archived (saved for replay)
+        // Store metadata: file_path, duration_seconds, likes, viewers_peak, comments, orders, revenue_cents
         $stmt = $db->prepare("
             UPDATE live_streams 
             SET status = 'archived', 
                 ended_at = NOW(),
-                video_path = ?
+                video_path = ?,
+                duration_seconds = ?,
+                max_viewers = ?
             WHERE id = ?
         ");
-        $stmt->execute([$videoUrl, $streamId]);
+        $stmt->execute([
+            $videoUrl, 
+            $duration,
+            $stream['peak_viewers'],
+            $streamId
+        ]);
         
         // Also save to saved_streams table for backward compatibility
         // Note: saved_streams uses different column names (seller_id, stream_title, etc.)

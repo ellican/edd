@@ -49,11 +49,10 @@ class FakeEngagementGenerator {
                 return $initialViewers;
             }
             
-            // Calculate target fake viewers (should be 2-5x real viewers)
-            $multiplier = $config['engagement_multiplier'];
+            // Calculate target fake viewers (independent of real viewers)
             $targetFake = max(
                 $config['min_fake_viewers'],
-                min($config['max_fake_viewers'], (int)($currentReal * $multiplier))
+                min($config['max_fake_viewers'], $config['min_fake_viewers'] + rand(0, 30))
             );
             
             // Add some randomness to the increase/decrease
@@ -120,18 +119,13 @@ class FakeEngagementGenerator {
                 return 0;
             }
             
-            // Calculate like probability based on engagement rate
-            // Typically 5-15% of viewers like during a stream
-            $likeProbability = 0.10 * $config['engagement_multiplier'];
-            
-            // Random chance to add likes (1-2 likes per increment as per requirements)
-            $likeRate = min($config['like_rate'], 2); // Cap at 2 per requirement
+            // Random chance to add likes (1 like per increment as per requirements)
+            // Independent of viewer count - simple random probability
+            $likeProbability = 0.25; // 25% chance to add like
             $likesToAdd = 0;
             
-            for ($i = 0; $i < $likeRate; $i++) {
-                if (rand(1, 100) / 100 < $likeProbability) {
-                    $likesToAdd++;
-                }
+            if (rand(1, 100) / 100 < $likeProbability) {
+                $likesToAdd = 1; // Always add just 1 like when triggered
             }
             
             if ($likesToAdd > 0) {
@@ -205,8 +199,8 @@ class FakeEngagementGenerator {
             INSERT INTO stream_engagement_config 
             (stream_id, fake_viewers_enabled, fake_likes_enabled, 
              min_fake_viewers, max_fake_viewers, viewer_increase_rate, 
-             viewer_decrease_rate, like_rate, engagement_multiplier)
-            VALUES (?, 1, 1, 10, 50, 5, 3, 2, 1.50)
+             viewer_decrease_rate, like_rate)
+            VALUES (?, 1, 1, 10, 50, 5, 3, 2)
         ");
         $stmt->execute([$streamId]);
     }
