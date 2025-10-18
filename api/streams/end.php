@@ -88,7 +88,8 @@ try {
             viewer_count = ?,
             like_count = ?,
             dislike_count = ?,
-            comment_count = ?
+            comment_count = ?,
+            total_revenue = ?
         WHERE id = ?
     ");
     $stmt->execute([
@@ -96,6 +97,7 @@ try {
         $stream['total_likes'],
         $stream['total_dislikes'],
         $stream['total_comments'],
+        $stream['total_revenue'],
         $streamId
     ]);
     

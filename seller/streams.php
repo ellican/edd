@@ -402,6 +402,25 @@ include __DIR__ . '/../templates/seller-header.php';
     </div>
 </div>
 
+<!-- Rename Stream Modal -->
+<div id="renameModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; padding: 30px; max-width: 500px; width: 90%;">
+        <h2 style="margin-bottom: 16px; color: #1f2937;">Rename Stream</h2>
+        <div style="margin-bottom: 24px;">
+            <label style="display: block; margin-bottom: 8px; color: #374151; font-weight: 600;">Stream Title</label>
+            <input type="text" id="renameInput" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button onclick="closeRenameModal()" class="btn btn-outline">
+                Cancel
+            </button>
+            <button onclick="confirmRename()" class="btn btn-primary">
+                Save Changes
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 let streamToDelete = null;
 let streamToCancel = null;
@@ -641,7 +660,10 @@ function renderRecentStreams(streams) {
                             ▶️ Watch Recording
                         </button>
                     ` : ''}
-                    <button onclick="viewStats(${stream.id})" class="btn btn-info">
+                    <button onclick="renameStream(${stream.id}, '${escapeHtml(stream.title).replace(/'/g, "\\'")}' )" class="btn btn-info">
+                        ✏️ Rename
+                    </button>
+                    <button onclick="viewStats(${stream.id})" class="btn btn-outline">
                         📊 View Stats
                     </button>
                     <button onclick="deleteStream(${stream.id})" class="btn btn-danger">
@@ -755,8 +777,58 @@ function startScheduledStream(streamId) {
 }
 
 function editStream(streamId) {
-    // TODO: Implement edit modal or redirect to edit page
-    alert('Edit functionality will be implemented soon');
+    // Redirect to rename functionality
+    renameStream(streamId, '');
+}
+
+let streamToRename = null;
+
+function renameStream(streamId, currentTitle) {
+    streamToRename = streamId;
+    document.getElementById('renameInput').value = currentTitle;
+    document.getElementById('renameModal').style.display = 'flex';
+}
+
+function closeRenameModal() {
+    streamToRename = null;
+    document.getElementById('renameModal').style.display = 'none';
+}
+
+function confirmRename() {
+    if (!streamToRename) return;
+    
+    const newTitle = document.getElementById('renameInput').value.trim();
+    if (!newTitle) {
+        alert('Please enter a stream title');
+        return;
+    }
+    
+    fetch('/api/streams/update.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            stream_id: streamToRename,
+            title: newTitle
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Stream renamed successfully', 'success');
+            closeRenameModal();
+            // Reload the appropriate section
+            loadRecentStreams();
+            loadScheduledStreams();
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Failed to rename stream', 'error');
+    });
 }
 
 function cancelStream(streamId) {
@@ -836,7 +908,8 @@ function confirmDelete() {
 }
 
 function watchRecording(streamId) {
-    window.location.href = `/watch?stream_id=${streamId}`;
+    // Open replay in modal
+    window.location.href = `/live.php?stream=${streamId}&replay=1`;
 }
 
 function viewStats(streamId) {
