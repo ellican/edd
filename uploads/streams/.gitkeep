@@ -1,0 +1,2 @@
+# Stream recordings are stored here
+# Directory structure: /uploads/streams/{seller_id}/{stream_id}.mp4
