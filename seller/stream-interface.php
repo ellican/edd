@@ -729,13 +729,18 @@ function startStreaming() {
             statsInterval = setInterval(updateStreamStats, 5000); // Every 5 seconds
             updateStreamStats(); // Initial fetch
             
-            // Start auto-engagement
-            engagementInterval = setInterval(() => {
-                triggerEngagement(currentStreamId);
-            }, 15000); // Every 15 seconds
+            // Start auto-engagement with random intervals (5-15 seconds)
+            function scheduleNextEngagement() {
+                const randomDelay = (5 + Math.random() * 10) * 1000; // 5-15 seconds in milliseconds
+                engagementInterval = setTimeout(() => {
+                    triggerEngagement(currentStreamId);
+                    scheduleNextEngagement(); // Schedule next one
+                }, randomDelay);
+            }
             
-            // Trigger initial engagement
+            // Trigger initial engagement and start the cycle
             triggerEngagement(currentStreamId);
+            scheduleNextEngagement();
             
             // Show success message
             showNotification('🎉 You are now LIVE! Your stream is broadcasting to customers.');

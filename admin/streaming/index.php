@@ -1125,26 +1125,28 @@ if ($database_available) {
                 settings[key] = value;
             }
             
-            // Handle checkbox
+            // Handle checkboxes properly
             settings['stream_enable_recording'] = form.querySelector('[name="stream_enable_recording"]').checked ? '1' : '0';
+            settings['fake_viewers_enabled'] = form.querySelector('[name="fake_viewers_enabled"]').checked ? '1' : '0';
+            settings['fake_likes_enabled'] = form.querySelector('[name="fake_likes_enabled"]').checked ? '1' : '0';
             
             const btn = this;
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
             
             try {
-                const response = await fetch('/api/admin/streams/settings.php', {
+                const response = await fetch('/api/admin/streams/save-settings.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ action: 'update', settings: settings })
+                    body: JSON.stringify(settings)
                 });
                 
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert('Settings saved successfully!');
+                    alert('✅ Settings saved successfully! These settings will apply to all new streams.');
                     bootstrap.Modal.getInstance(document.getElementById('streamSettingsModal')).hide();
                 } else {
                     alert('Error: ' + data.error);

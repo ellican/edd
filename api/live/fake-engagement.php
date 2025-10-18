@@ -42,6 +42,13 @@ class FakeEngagementGenerator {
             $stmt->execute([$streamId]);
             $currentReal = $stmt->fetch()['count'];
             
+            // If this is initial setup (no fake viewers yet), add initial batch
+            if ($currentFake == 0) {
+                $initialViewers = rand(5, 20); // Initial range: 5-20 viewers
+                $this->addFakeViewers($streamId, $initialViewers);
+                return $initialViewers;
+            }
+            
             // Calculate target fake viewers (should be 2-5x real viewers)
             $multiplier = $config['engagement_multiplier'];
             $targetFake = max(
@@ -52,8 +59,8 @@ class FakeEngagementGenerator {
             // Add some randomness to the increase/decrease
             $change = 0;
             if ($currentFake < $targetFake) {
-                // Add viewers
-                $maxIncrease = $config['viewer_increase_rate'];
+                // Add viewers (1-5 per increment as per requirements)
+                $maxIncrease = min($config['viewer_increase_rate'], 5); // Cap at 5 per requirement
                 $change = rand(1, $maxIncrease);
                 $this->addFakeViewers($streamId, min($change, $targetFake - $currentFake));
             } elseif ($currentFake > $targetFake) {
@@ -82,6 +89,24 @@ class FakeEngagementGenerator {
                 return 0;
             }
             
+            // Check if this is initial setup
+            $stmt = $this->pdo->prepare("
+                SELECT COUNT(*) as count 
+                FROM stream_interactions 
+                WHERE stream_id = ? AND interaction_type = 'like' AND is_fake = 1
+            ");
+            $stmt->execute([$streamId]);
+            $currentFakeLikes = $stmt->fetch()['count'];
+            
+            // If this is initial setup, add initial likes (0-10)
+            if ($currentFakeLikes == 0) {
+                $initialLikes = rand(0, 10); // Initial range: 0-10 likes
+                if ($initialLikes > 0) {
+                    $this->addFakeLikes($streamId, $initialLikes);
+                }
+                return $initialLikes;
+            }
+            
             // Get current viewer count (real + fake)
             $stmt = $this->pdo->prepare("
                 SELECT COUNT(*) as count 
@@ -99,8 +124,8 @@ class FakeEngagementGenerator {
             // Typically 5-15% of viewers like during a stream
             $likeProbability = 0.10 * $config['engagement_multiplier'];
             
-            // Random chance to add likes
-            $likeRate = $config['like_rate'];
+            // Random chance to add likes (1-2 likes per increment as per requirements)
+            $likeRate = min($config['like_rate'], 2); // Cap at 2 per requirement
             $likesToAdd = 0;
             
             for ($i = 0; $i < $likeRate; $i++) {
