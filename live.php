@@ -9,6 +9,32 @@ require_once __DIR__ . '/includes/init.php';
 $product = new Product();
 $liveStream = new LiveStream();
 
+// Check if we're in replay mode
+$isReplay = isset($_GET['replay']) && $_GET['replay'] == '1';
+$replayStreamId = isset($_GET['stream']) ? (int)$_GET['stream'] : null;
+
+if ($isReplay && $replayStreamId) {
+    // Replay mode - load archived stream
+    $replayStream = $liveStream->getStreamById($replayStreamId);
+    
+    if (!$replayStream || $replayStream['status'] !== 'archived') {
+        // Stream not found or not archived, redirect to main live page
+        header('Location: /live.php');
+        exit;
+    }
+    
+    // Get stream products
+    $streamProducts = $liveStream->getStreamProducts($replayStreamId);
+    
+    $page_title = 'Watch Replay: ' . htmlspecialchars($replayStream['title']) . ' - FezaMarket Live';
+    includeHeader($page_title);
+    
+    // Include replay template
+    include __DIR__ . '/templates/stream-replay.php';
+    includeFooter();
+    exit;
+}
+
 // Get active live streams from database
 $activeStreams = $liveStream->getActiveStreams(10);
 
