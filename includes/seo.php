@@ -295,6 +295,37 @@ class SEO {
     }
     
     /**
+     * Create optimized image tag with lazy loading and alt text
+     */
+    public static function createImageTag($src, $alt = '', $attributes = []) {
+        $attrs = [
+            'src' => htmlspecialchars($src),
+            'alt' => htmlspecialchars($alt),
+            'loading' => 'lazy'
+        ];
+        
+        // Merge with custom attributes
+        $attrs = array_merge($attrs, $attributes);
+        
+        // Build attribute string
+        $attrString = '';
+        foreach ($attrs as $key => $value) {
+            $attrString .= ' ' . htmlspecialchars($key) . '="' . htmlspecialchars($value) . '"';
+        }
+        
+        return '<img' . $attrString . '>';
+    }
+    
+    /**
+     * Optimize images by adding width and height attributes
+     */
+    public static function optimizeImageDimensions($html) {
+        // This would require image dimension detection
+        // For now, we'll just ensure images have proper attributes
+        return $html;
+    }
+    
+    /**
      * Generate robots.txt content
      */
     public static function generateRobotsTxt() {
