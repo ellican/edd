@@ -656,9 +656,98 @@ function renderRecentStreams(streams) {
 }
 
 function stopStream(streamId) {
-    if (confirm('Are you sure you want to stop this stream?')) {
-        window.location.href = `/seller/stream-interface.php?stream_id=${streamId}`;
+    if (!streamId) {
+        showNotification('Invalid stream ID', 'error');
+        return;
     }
+    
+    // Show confirmation modal with options
+    showStopStreamModal(streamId);
+}
+
+// Add modal for stopping stream with save/delete options
+let streamToStop = null;
+
+function showStopStreamModal(streamId) {
+    streamToStop = streamId;
+    
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('stopStreamModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'stopStreamModal';
+        modal.style.cssText = 'display: flex; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center;';
+        modal.innerHTML = `
+            <div style="background: white; border-radius: 12px; padding: 30px; max-width: 500px; width: 90%;">
+                <h2 style="margin-bottom: 20px; color: #1f2937;">Stop Live Stream?</h2>
+                <p style="margin-bottom: 20px; color: #6b7280;">
+                    This will end the live stream. Would you like to save the recording for viewers to watch later?
+                </p>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <button onclick="confirmStopStream('save')" style="flex: 1; padding: 12px; background: #10b981; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                        💾 Save & Stop
+                    </button>
+                    <button onclick="confirmStopStream('delete')" style="flex: 1; padding: 12px; background: #dc2626; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                        🗑️ Delete & Stop
+                    </button>
+                </div>
+                <button onclick="closeStopStreamModal()" style="width: 100%; padding: 12px; background: white; color: #6b7280; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer;">
+                    Cancel
+                </button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    } else {
+        modal.style.display = 'flex';
+    }
+}
+
+function closeStopStreamModal() {
+    const modal = document.getElementById('stopStreamModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    streamToStop = null;
+}
+
+function confirmStopStream(action) {
+    if (!streamToStop) return;
+    
+    // Show loading notification
+    showNotification('Stopping stream...', 'info');
+    
+    // Call the end stream API
+    fetch('/api/streams/end.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            stream_id: streamToStop,
+            action: action
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeStopStreamModal();
+            if (action === 'save') {
+                showNotification('✅ Stream stopped and saved successfully!', 'success');
+            } else {
+                showNotification('✅ Stream stopped successfully!', 'success');
+            }
+            // Reload the page to update the stream list
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Failed to stop stream. Please try again.', 'error');
+    });
 }
 
 function startScheduledStream(streamId) {

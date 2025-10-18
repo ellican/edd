@@ -12,10 +12,13 @@
                 <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <!-- Header -->
                     <tr>
-                        <td style="background: <?= ($type ?? 'credit') === 'credit' ? 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)' : 'linear-gradient(135deg, #ee0979 0%, #ff6a00 100%)' ?>; padding: 40px; text-align: center; border-radius: 8px 8px 0 0;">
-                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">
+                        <td style="background: <?= ($type ?? 'credit') === 'credit' ? 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)' : 'linear-gradient(135deg, #ee0979 0%, #ff6a00 100%)' ?>; padding: 45px 40px; text-align: center; border-radius: 8px 8px 0 0;">
+                            <h1 style="margin: 0 0 8px 0; color: #ffffff; font-size: 32px; font-weight: 700; letter-spacing: -0.5px;">
                                 <?= ($type ?? 'credit') === 'credit' ? '💰 Wallet Credited' : '💸 Wallet Debited' ?>
                             </h1>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.95); font-size: 16px;">
+                                Transaction Notification
+                            </p>
                         </td>
                     </tr>
                     
@@ -62,8 +65,8 @@
                             
                             <div style="text-align: center; margin: 30px 0;">
                                 <a href="<?= env('APP_URL', 'https://fezamarket.com') ?>/account.php" 
-                                   style="display: inline-block; padding: 15px 40px; background-color: #667eea; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: 600; font-size: 16px;">
-                                    View Wallet
+                                   style="display: inline-block; padding: 16px 45px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4); letter-spacing: 0.5px;">
+                                    View Wallet →
                                 </a>
                             </div>
                             

@@ -31,13 +31,19 @@
         .header { 
             background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); 
             color: white; 
-            padding: 40px 30px; 
+            padding: 45px 30px; 
             text-align: center; 
         }
         .header h1 { 
-            margin: 0; 
-            font-size: 28px; 
-            font-weight: 300; 
+            margin: 0 0 8px 0; 
+            font-size: 32px; 
+            font-weight: 600; 
+            letter-spacing: -0.5px;
+        }
+        .header p {
+            margin: 0;
+            font-size: 16px;
+            opacity: 0.95;
         }
         .content { 
             padding: 40px 30px; 
@@ -50,11 +56,13 @@
             display: inline-block; 
             background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); 
             color: white !important; 
-            padding: 15px 30px; 
+            padding: 16px 35px; 
             text-decoration: none; 
-            border-radius: 5px; 
-            font-weight: bold; 
+            border-radius: 6px; 
+            font-weight: 700; 
             margin: 20px 0; 
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+            letter-spacing: 0.3px;
         }
         .footer { 
             background: #f8f9fa; 
