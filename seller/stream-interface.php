@@ -923,30 +923,6 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function stopStreaming() {
-    if (confirm('Are you sure you want to end your live stream?')) {
-        isStreaming = false;
-        
-        // Update UI
-        document.getElementById('goLiveBtn').textContent = 'Go Live';
-        document.getElementById('goLiveBtn').style.background = '#dc2626';
-        updateStatus('ready', 'Stream Ended');
-        
-        // Stop duration counter
-        if (durationInterval) {
-            clearInterval(durationInterval);
-            durationInterval = null;
-        }
-        
-        // Reset viewer count
-        document.getElementById('viewerCount').textContent = '0';
-        
-        // Show summary
-        const duration = document.getElementById('duration').textContent;
-        showNotification(`Stream ended. Duration: ${duration}. Great job! 👏`);
-    }
-}
-
 function updateDuration() {
     if (!streamStartTime) return;
     
