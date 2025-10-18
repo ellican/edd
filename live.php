@@ -1332,8 +1332,9 @@ function showReplayModal(streamId) {
                         
                         <div style="position: relative; background: #000;">
                             ${videoPath ? `
-                                <video controls autoplay style="width: 100%; display: block; max-height: 70vh;">
+                                <video controls autoplay controlsList="nodownload" preload="metadata" style="width: 100%; display: block; max-height: 70vh;" onerror="handleVideoError(this)">
                                     <source src="${escapeHtml(videoPath)}" type="video/mp4">
+                                    <source src="${escapeHtml(videoPath)}" type="video/webm">
                                     Your browser does not support the video tag.
                                 </video>
                             ` : `
@@ -1400,6 +1401,13 @@ function closeReplayModal() {
     }
 }
 
+// Allow ESC key to close modal
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeReplayModal();
+    }
+});
+
 function formatStreamDate(dateStr) {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', {
@@ -1427,6 +1435,18 @@ function formatStreamDuration(startStr, endStr) {
 
 function numberFormat(num) {
     return new Intl.NumberFormat().format(num);
+}
+
+function handleVideoError(videoElement) {
+    // Replace video with error message
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = 'aspect-ratio: 16/9; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; padding: 40px; text-align: center; background: #000;';
+    errorDiv.innerHTML = `
+        <div style="font-size: 64px; margin-bottom: 20px;">⚠️</div>
+        <h3 style="font-size: 24px; margin-bottom: 10px;">Unable to Load Video</h3>
+        <p style="font-size: 16px; opacity: 0.8;">The stream recording could not be loaded. It may have been removed or is temporarily unavailable.</p>
+    `;
+    videoElement.parentElement.replaceChild(errorDiv, videoElement);
 }
 
 // Poll for live stream status updates every 30 seconds
