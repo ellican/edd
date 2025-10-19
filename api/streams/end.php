@@ -79,8 +79,21 @@ try {
         throw new Exception('Stream is not currently live');
     }
     
-    // Calculate duration
-    $duration = time() - strtotime($stream['started_at']);
+    // Calculate duration safely - ensure non-negative and within bounds
+    $startTime = strtotime($stream['started_at']);
+    $endTime = time();
+    $duration = max(0, $endTime - $startTime);
+    
+    // Clamp duration to reasonable maximum (e.g., 48 hours = 172800 seconds)
+    // This prevents overflow and ensures data integrity
+    $maxDuration = 172800; // 48 hours in seconds
+    if ($duration > $maxDuration) {
+        error_log("Stream {$streamId} duration exceeded maximum: {$duration} seconds, clamping to {$maxDuration}");
+        $duration = $maxDuration;
+    }
+    
+    // Cast to int to ensure proper type
+    $duration = (int)$duration;
     
     // Update final engagement counts before ending
     $stmt = $db->prepare("
@@ -128,21 +141,27 @@ try {
         // For now, we're storing the path where the video would be saved
         // Mark stream as archived (saved for replay)
         // Store metadata: file_path, duration_seconds, likes, viewers_peak, comments, orders, revenue_cents
-        $stmt = $db->prepare("
-            UPDATE live_streams 
-            SET status = 'archived', 
-                ended_at = NOW(),
-                video_path = ?,
-                duration_seconds = ?,
-                max_viewers = ?
-            WHERE id = ?
-        ");
-        $stmt->execute([
-            $videoUrl, 
-            $duration,
-            $stream['peak_viewers'],
-            $streamId
-        ]);
+        try {
+            $stmt = $db->prepare("
+                UPDATE live_streams 
+                SET status = 'archived', 
+                    ended_at = NOW(),
+                    video_path = ?,
+                    duration_seconds = ?,
+                    max_viewers = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([
+                $videoUrl, 
+                $duration,
+                $stream['peak_viewers'],
+                $streamId
+            ]);
+        } catch (PDOException $e) {
+            error_log("Failed to save stream {$streamId}: " . $e->getMessage());
+            error_log("Duration value: {$duration} seconds");
+            throw new Exception('Failed to save stream: Database error');
+        }
         
         // Also save to saved_streams table for backward compatibility
         // Note: saved_streams uses different column names (seller_id, stream_title, etc.)

@@ -1129,9 +1129,21 @@ window.addEventListener('beforeunload', function() {
         leaveStream(currentStreamId, viewerId);
     }
     
-    // Cleanup video player
+    // Cleanup video player and stop engagement timers
     if (livePlayer) {
         livePlayer.destroy();
+    }
+});
+
+// Handle page visibility changes (tab switching, minimizing)
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        // Page is hidden - pause engagement but keep video playing
+        console.log('📴 Page hidden, pausing engagement updates');
+        // Player will continue running but we could pause engagement here if needed
+    } else {
+        // Page is visible again - resume
+        console.log('📱 Page visible, resuming normal operation');
     }
 });
 

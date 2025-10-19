@@ -7,8 +7,9 @@
 return [
     'up' => "
         -- Add duration_seconds column for stream duration tracking
+        -- Using BIGINT UNSIGNED to prevent overflow for long streams
         ALTER TABLE `live_streams` 
-        ADD COLUMN IF NOT EXISTS `duration_seconds` INT UNSIGNED NULL COMMENT 'Total stream duration in seconds' AFTER `ended_at`;
+        ADD COLUMN IF NOT EXISTS `duration_seconds` BIGINT UNSIGNED NULL COMMENT 'Total stream duration in seconds' AFTER `ended_at`;
         
         -- Create index for duration-based queries
         CREATE INDEX IF NOT EXISTS `idx_duration` ON `live_streams` (`duration_seconds`);
