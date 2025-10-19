@@ -11,6 +11,11 @@ class LiveStreamPlayer {
         this.hls = null;
         this.isLive = false;
         this.streamUrl = null;
+        this.retryCount = 0;
+        this.maxRetries = 12; // Retry for up to 1 minute (12 * 5 seconds)
+        this.retryInterval = 5000; // 5 seconds
+        this.streamPlayable = false; // Track if stream is playable
+        this.engagementStarted = false; // Track if engagement has started
     }
 
     /**
@@ -18,34 +23,84 @@ class LiveStreamPlayer {
      */
     async init() {
         try {
+            console.log('🎬 Initializing live stream player for stream ID:', this.streamId);
+            
             // Fetch stream information
             const streamData = await this.fetchStreamData();
             
             if (!streamData || !streamData.success) {
-                this.showError('Stream not available');
+                console.log('⚠️ Stream data not available, starting retry mechanism');
+                this.showWaitingMessage();
+                this.retryStreamLoad();
                 return;
             }
 
             this.streamUrl = streamData.stream_url;
             this.isLive = streamData.is_live;
+            
+            console.log('📡 Stream URL:', this.streamUrl);
+            console.log('🔴 Is Live:', this.isLive);
 
             // Create video element
             this.createVideoElement();
 
             // Initialize HLS if supported and URL is m3u8
             if (this.streamUrl && this.streamUrl.includes('.m3u8')) {
+                console.log('🎥 Initializing HLS player for .m3u8 stream');
                 this.initHLS();
             } else if (this.streamUrl) {
                 // Direct video source (MP4, WebM, etc.)
+                console.log('📹 Loading direct video source');
                 this.video.src = this.streamUrl;
             } else {
-                this.showPlaceholder();
+                console.log('⏳ No stream URL available, showing waiting message');
+                this.showWaitingMessage();
+                this.retryStreamLoad();
             }
 
         } catch (error) {
             console.error('❌ Failed to initialize player:', error);
             this.showError('Failed to load stream');
         }
+    }
+    
+    /**
+     * Retry loading the stream
+     */
+    async retryStreamLoad() {
+        if (this.retryCount >= this.maxRetries) {
+            console.log('❌ Max retries reached, giving up');
+            this.showError('Stream is not available. Please check back later.');
+            return;
+        }
+        
+        this.retryCount++;
+        console.log(`🔄 Retry attempt ${this.retryCount}/${this.maxRetries} in ${this.retryInterval/1000} seconds...`);
+        
+        setTimeout(async () => {
+            try {
+                const streamData = await this.fetchStreamData();
+                
+                if (streamData && streamData.success && streamData.stream_url) {
+                    console.log('✅ Stream is now available, initializing player');
+                    this.streamUrl = streamData.stream_url;
+                    this.isLive = streamData.is_live;
+                    this.createVideoElement();
+                    
+                    if (this.streamUrl.includes('.m3u8')) {
+                        this.initHLS();
+                    } else {
+                        this.video.src = this.streamUrl;
+                    }
+                } else {
+                    // Continue retrying
+                    this.retryStreamLoad();
+                }
+            } catch (error) {
+                console.error('❌ Error during retry:', error);
+                this.retryStreamLoad();
+            }
+        }, this.retryInterval);
     }
 
     /**
@@ -114,17 +169,28 @@ class LiveStreamPlayer {
                 liveSyncDurationCount: 3,
                 liveMaxLatencyDurationCount: 10,
                 liveDurationInfinity: false,
-                liveBackBufferLength: 0
+                liveBackBufferLength: 0,
+                xhrSetup: function(xhr, url) {
+                    // Add CORS headers for cross-origin requests
+                    xhr.withCredentials = false;
+                }
             });
 
+            console.log('📥 Loading HLS source:', this.streamUrl);
             this.hls.loadSource(this.streamUrl);
             this.hls.attachMedia(this.video);
 
             this.hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                console.log('✅ HLS manifest parsed, starting playback');
+                console.log('✅ HLS manifest parsed successfully, stream is playable');
+                this.streamPlayable = true;
+                
+                // Start video playback
                 this.video.play().catch(error => {
                     console.log('⚠️ Autoplay prevented, user interaction required');
                 });
+                
+                // Start engagement logic ONLY after stream is confirmed playable
+                this.startEngagement();
             });
 
             this.hls.on(Hls.Events.ERROR, (event, data) => {
@@ -134,7 +200,15 @@ class LiveStreamPlayer {
                     switch (data.type) {
                         case Hls.ErrorTypes.NETWORK_ERROR:
                             console.log('🔄 Fatal network error, trying to recover...');
-                            this.hls.startLoad();
+                            // If manifest not loaded yet, retry loading stream
+                            if (!this.streamPlayable && this.retryCount < this.maxRetries) {
+                                console.log('📡 Stream not yet available, will retry...');
+                                this.hls.destroy();
+                                this.showWaitingMessage();
+                                this.retryStreamLoad();
+                            } else {
+                                this.hls.startLoad();
+                            }
                             break;
                         case Hls.ErrorTypes.MEDIA_ERROR:
                             console.log('🔄 Fatal media error, trying to recover...');
@@ -154,13 +228,47 @@ class LiveStreamPlayer {
             console.log('🎬 Using native HLS support...');
             this.video.src = this.streamUrl;
             this.video.addEventListener('loadedmetadata', () => {
+                console.log('✅ Native HLS stream is playable');
+                this.streamPlayable = true;
                 this.video.play().catch(error => {
                     console.log('⚠️ Autoplay prevented, user interaction required');
                 });
+                // Start engagement after native HLS is ready
+                this.startEngagement();
             });
         } else {
             this.showError('Your browser does not support HLS streaming');
         }
+    }
+    
+    /**
+     * Start engagement logic (viewers and likes)
+     * Only called after stream is confirmed playable
+     */
+    startEngagement() {
+        if (this.engagementStarted) {
+            console.log('⚠️ Engagement already started, skipping');
+            return;
+        }
+        
+        this.engagementStarted = true;
+        console.log('🎯 Starting engagement timers');
+        
+        // Start viewer count increment after 10 seconds
+        setTimeout(() => {
+            console.log('👥 Viewer engagement started (10 seconds after playback)');
+            if (typeof triggerFakeEngagement === 'function') {
+                triggerFakeEngagement(this.streamId);
+            }
+        }, 10000);
+        
+        // Start like count increment after 30 seconds
+        setTimeout(() => {
+            console.log('👍 Like engagement started (30 seconds after playback)');
+            if (typeof triggerFakeEngagement === 'function') {
+                triggerFakeEngagement(this.streamId);
+            }
+        }, 30000);
     }
 
     /**
@@ -173,6 +281,28 @@ class LiveStreamPlayer {
                 <h3 style="font-size: 24px; margin-bottom: 10px;">Stream Not Available</h3>
                 <p style="font-size: 16px; opacity: 0.8;">The live stream will begin shortly</p>
             </div>
+        `;
+    }
+    
+    /**
+     * Show waiting message with retry info
+     */
+    showWaitingMessage() {
+        this.container.innerHTML = `
+            <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #1f2937, #374151); color: white;">
+                <div style="font-size: 64px; margin-bottom: 20px;">⏳</div>
+                <h3 style="font-size: 24px; margin-bottom: 10px;">Waiting for stream to start...</h3>
+                <p style="font-size: 16px; opacity: 0.8;">Checking every 5 seconds (Attempt ${this.retryCount}/${this.maxRetries})</p>
+                <div style="margin-top: 20px;">
+                    <div class="spinner" style="border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;"></div>
+                </div>
+            </div>
+            <style>
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            </style>
         `;
     }
 

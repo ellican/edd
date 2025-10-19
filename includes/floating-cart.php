@@ -175,13 +175,14 @@ if (Session::isLoggedIn()) {
     background: #ffffff;
     box-shadow: -2px 0 20px rgba(0, 0, 0, 0.15);
     z-index: 9999 !important;
-    display: flex;
+    display: none; /* Hide completely when inactive to prevent rendering below footer */
     flex-direction: column;
     transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
 }
 
 .floating-cart-panel.active {
+    display: flex !important; /* Show when active */
     right: 0 !important;
 }
 
@@ -480,10 +481,12 @@ if (Session::isLoggedIn()) {
         width: 100%;
         max-width: 100%;
         right: -100%;
+        display: none; /* Hide completely on mobile when inactive */
     }
     
     .floating-cart-panel.active {
-        right: 0;
+        display: flex !important; /* Show when active on mobile */
+        right: 0 !important;
     }
 }
 
