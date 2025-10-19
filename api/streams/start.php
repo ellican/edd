@@ -92,33 +92,76 @@ try {
         ]);
         
     } else {
-        // Create a new stream with unique stream_key
-        // Generate unique stream key
-        $streamKey = sprintf(
-            'stream_%d_%d_%s',
-            $vendorId,
-            time(),
-            substr(md5(uniqid(rand(), true)), 0, 16)
-        );
-        
-        $stmt = $db->prepare("
-            INSERT INTO live_streams 
-            (vendor_id, stream_key, title, description, thumbnail_url, stream_url, 
-             status, chat_enabled, started_at, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'live', ?, NOW(), NOW())
-        ");
-        
-        $stmt->execute([
-            $vendorId,
-            $streamKey,
-            $data['title'],
-            $data['description'] ?? null,
-            $data['thumbnail_url'] ?? null,
-            $data['stream_url'] ?? null,
-            isset($data['chat_enabled']) ? (int)$data['chat_enabled'] : 1
-        ]);
-        
-        $streamId = $db->lastInsertId();
+        // Create a new stream
+        // Check if Mux integration should be used
+        if (getenv('MUX_TOKEN_ID') && getenv('MUX_TOKEN_SECRET')) {
+            // Use Mux for live streaming
+            require_once __DIR__ . '/../../includes/MuxStreamService.php';
+            
+            try {
+                $muxService = new MuxStreamService();
+                $muxData = $muxService->createLiveStream([
+                    'playback_policy' => ['public'],
+                    'new_asset_settings' => ['playback_policy' => ['public']],
+                    'reconnect_window' => 60,
+                    'reduced_latency' => true
+                ]);
+                
+                // Create stream with Mux data
+                $stmt = $db->prepare("
+                    INSERT INTO live_streams 
+                    (vendor_id, stream_key, mux_stream_id, mux_playback_id, title, description, 
+                     thumbnail_url, stream_url, status, chat_enabled, started_at, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'live', ?, NOW(), NOW())
+                ");
+                
+                $stmt->execute([
+                    $vendorId,
+                    $muxData['stream_key'],
+                    $muxData['mux_stream_id'],
+                    $muxData['playback_id'],
+                    $data['title'],
+                    $data['description'] ?? null,
+                    $data['thumbnail_url'] ?? null,
+                    $muxData['stream_url'],
+                    isset($data['chat_enabled']) ? (int)$data['chat_enabled'] : 1
+                ]);
+                
+                $streamId = $db->lastInsertId();
+                
+            } catch (Exception $e) {
+                // Fall back to non-Mux streaming
+                error_log("Mux integration failed: " . $e->getMessage());
+                throw new Exception("Failed to create Mux stream: " . $e->getMessage());
+            }
+        } else {
+            // Generate unique stream key for non-Mux streaming
+            $streamKey = sprintf(
+                'stream_%d_%d_%s',
+                $vendorId,
+                time(),
+                substr(md5(uniqid(rand(), true)), 0, 16)
+            );
+            
+            $stmt = $db->prepare("
+                INSERT INTO live_streams 
+                (vendor_id, stream_key, title, description, thumbnail_url, stream_url, 
+                 status, chat_enabled, started_at, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'live', ?, NOW(), NOW())
+            ");
+            
+            $stmt->execute([
+                $vendorId,
+                $streamKey,
+                $data['title'],
+                $data['description'] ?? null,
+                $data['thumbnail_url'] ?? null,
+                $data['stream_url'] ?? null,
+                isset($data['chat_enabled']) ? (int)$data['chat_enabled'] : 1
+            ]);
+            
+            $streamId = $db->lastInsertId();
+        }
     }
     
     // Initialize engagement config for this stream if it doesn't exist

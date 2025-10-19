@@ -47,7 +47,7 @@ try {
     
     // Verify the stream belongs to this vendor and is archived
     $stmt = $db->prepare("
-        SELECT id, status, video_path 
+        SELECT id, status, video_path, mux_stream_id, mux_playback_id 
         FROM live_streams 
         WHERE id = ? AND vendor_id = ?
     ");
@@ -68,10 +68,26 @@ try {
         throw new Exception('Only archived or ended streams can be deleted');
     }
     
-    // Delete the video file if it exists
-    // video_path is stored as web-accessible path like /uploads/streams/vendor_id/stream_id.mp4
-    // Convert to filesystem path
-    if ($stream['video_path']) {
+    // Delete from Mux if stream uses Mux
+    if (!empty($stream['mux_stream_id'])) {
+        require_once __DIR__ . '/../../includes/MuxStreamService.php';
+        try {
+            $muxService = new MuxStreamService();
+            $deleted = $muxService->deleteLiveStream($stream['mux_stream_id']);
+            if ($deleted) {
+                error_log("Deleted Mux stream for stream {$streamId}: {$stream['mux_stream_id']}");
+            } else {
+                error_log("Failed to delete Mux stream for stream {$streamId}");
+            }
+        } catch (Exception $e) {
+            error_log("Error deleting Mux stream: " . $e->getMessage());
+            // Continue with database deletion even if Mux deletion fails
+        }
+    }
+    
+    // Delete the video file if it exists (for non-Mux streams)
+    if ($stream['video_path'] && strpos($stream['video_path'], 'stream.mux.com') === false) {
+        // Only delete local files, not Mux URLs
         $filePath = $_SERVER['DOCUMENT_ROOT'] . $stream['video_path'];
         if (file_exists($filePath)) {
             $deleted = @unlink($filePath);
