@@ -1101,8 +1101,9 @@ document.addEventListener('DOMContentLoaded', function() {
         joinStream(currentStreamId);
         loadComments(currentStreamId);
         
-        // Trigger fake engagement immediately
-        triggerFakeEngagement(currentStreamId);
+        // Note: Engagement (viewers/likes) will be started automatically by the LiveStreamPlayer
+        // after MANIFEST_PARSED event confirms the stream is playable.
+        // This ensures engagement only starts when the stream is actually playing.
         
         // Update viewer count and comments periodically with random intervals (5-15 seconds)
         function scheduleNextUpdate() {
@@ -1110,7 +1111,7 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => {
                 updateViewerCount(currentStreamId);
                 loadComments(currentStreamId);
-                triggerFakeEngagement(currentStreamId); // Add fake engagement periodically
+                // Engagement is now handled by LiveStreamPlayer after stream is confirmed playable
                 scheduleNextUpdate(); // Schedule next update
             }, randomDelay);
         }

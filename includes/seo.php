@@ -169,6 +169,11 @@ class SEO {
         $position = 1;
         
         foreach ($breadcrumbs as $breadcrumb) {
+            // Defensive check: ensure required keys exist
+            if (!isset($breadcrumb['name']) || !isset($breadcrumb['url'])) {
+                continue; // Skip invalid breadcrumb entries
+            }
+            
             $itemList[] = [
                 '@type' => 'ListItem',
                 'position' => $position++,
@@ -249,6 +254,9 @@ class SEO {
     private static function getAbsoluteUrl($path) {
         $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        
+        // Ensure $path is a string before passing to ltrim()
+        $path = (string)$path;
         
         // Remove leading slash if present
         $path = ltrim($path, '/');
