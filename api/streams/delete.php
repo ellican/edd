@@ -69,8 +69,20 @@ try {
     }
     
     // Delete the video file if it exists
-    if ($stream['video_path'] && file_exists($stream['video_path'])) {
-        @unlink($stream['video_path']);
+    // video_path is stored as web-accessible path like /uploads/streams/vendor_id/stream_id.mp4
+    // Convert to filesystem path
+    if ($stream['video_path']) {
+        $filePath = $_SERVER['DOCUMENT_ROOT'] . $stream['video_path'];
+        if (file_exists($filePath)) {
+            $deleted = @unlink($filePath);
+            if ($deleted) {
+                error_log("Deleted video file for stream {$streamId}: {$filePath}");
+            } else {
+                error_log("Failed to delete video file for stream {$streamId}: {$filePath}");
+            }
+        } else {
+            error_log("Video file not found for stream {$streamId}: {$filePath}");
+        }
     }
     
     // Delete related data
