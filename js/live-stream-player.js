@@ -16,6 +16,9 @@ class LiveStreamPlayer {
         this.retryInterval = 5000; // 5 seconds
         this.streamPlayable = false; // Track if stream is playable
         this.engagementStarted = false; // Track if engagement has started
+        this.viewerTimer = null; // Timer for viewer count updates
+        this.likeTimer = null; // Timer for like count updates
+        this.statusTimer = null; // Timer for stream status monitoring
     }
 
     /**
@@ -203,11 +206,18 @@ class LiveStreamPlayer {
                             // If manifest not loaded yet, retry loading stream
                             if (!this.streamPlayable && this.retryCount < this.maxRetries) {
                                 console.log('📡 Stream not yet available, will retry...');
-                                this.hls.destroy();
+                                this.destroy(); // Clean up properly before retry
                                 this.showWaitingMessage();
                                 this.retryStreamLoad();
-                            } else {
+                            } else if (this.streamPlayable) {
+                                // Stream was playing, try to recover
+                                console.log('🔄 Attempting to recover network error...');
                                 this.hls.startLoad();
+                            } else {
+                                // Max retries reached
+                                console.error('❌ Max retries reached for network error');
+                                this.destroy();
+                                this.showError('Unable to load stream. Please try again later.');
                             }
                             break;
                         case Hls.ErrorTypes.MEDIA_ERROR:
@@ -216,7 +226,7 @@ class LiveStreamPlayer {
                             break;
                         default:
                             console.error('❌ Unrecoverable error, destroying HLS');
-                            this.hls.destroy();
+                            this.destroy();
                             this.showError('Stream playback failed');
                             break;
                     }
@@ -252,23 +262,67 @@ class LiveStreamPlayer {
         }
         
         this.engagementStarted = true;
-        console.log('🎯 Starting engagement timers');
+        console.log('🎯 Starting engagement timers (after stream is playable)');
         
-        // Start viewer count increment after 10 seconds
+        // Start viewer count increment after 10 seconds with randomized intervals
         setTimeout(() => {
             console.log('👥 Viewer engagement started (10 seconds after playback)');
-            if (typeof triggerFakeEngagement === 'function') {
-                triggerFakeEngagement(this.streamId);
-            }
+            this.scheduleViewerUpdates();
         }, 10000);
         
-        // Start like count increment after 30 seconds
+        // Start like count increment after 30 seconds with randomized intervals
         setTimeout(() => {
             console.log('👍 Like engagement started (30 seconds after playback)');
-            if (typeof triggerFakeEngagement === 'function') {
-                triggerFakeEngagement(this.streamId);
-            }
+            this.scheduleLikeUpdates();
         }, 30000);
+    }
+    
+    /**
+     * Schedule randomized viewer count updates
+     */
+    scheduleViewerUpdates() {
+        if (!this.engagementStarted || !this.streamPlayable) {
+            console.log('⚠️ Stopping viewer updates - stream not playable');
+            return;
+        }
+        
+        // Random interval between 5-13 seconds
+        const randomInterval = (5 + Math.random() * 8) * 1000;
+        
+        // Random increment value (1-3)
+        const randomIncrement = Math.floor(1 + Math.random() * 3);
+        
+        // Trigger engagement update
+        if (typeof triggerFakeEngagement === 'function') {
+            triggerFakeEngagement(this.streamId);
+        }
+        
+        // Schedule next update
+        this.viewerTimer = setTimeout(() => this.scheduleViewerUpdates(), randomInterval);
+    }
+    
+    /**
+     * Schedule randomized like count updates
+     */
+    scheduleLikeUpdates() {
+        if (!this.engagementStarted || !this.streamPlayable) {
+            console.log('⚠️ Stopping like updates - stream not playable');
+            return;
+        }
+        
+        // Random interval between 5-13 seconds
+        const randomInterval = (5 + Math.random() * 8) * 1000;
+        
+        // Random increment value (1-3)
+        const randomIncrement = Math.floor(1 + Math.random() * 3);
+        
+        // Trigger engagement update
+        if (typeof triggerFakeEngagement === 'function') {
+            triggerFakeEngagement(this.streamId);
+        }
+        
+        // Schedule next update
+        this.likeTimer = setTimeout(() => this.scheduleLikeUpdates(), randomInterval);
     }
 
     /**
@@ -339,10 +393,33 @@ class LiveStreamPlayer {
      * Destroy player and cleanup resources
      */
     destroy() {
+        console.log('🧹 Cleaning up player resources');
+        
+        // Stop engagement timers
+        if (this.viewerTimer) {
+            clearTimeout(this.viewerTimer);
+            this.viewerTimer = null;
+        }
+        if (this.likeTimer) {
+            clearTimeout(this.likeTimer);
+            this.likeTimer = null;
+        }
+        if (this.statusTimer) {
+            clearTimeout(this.statusTimer);
+            this.statusTimer = null;
+        }
+        
+        // Mark engagement as stopped
+        this.engagementStarted = false;
+        this.streamPlayable = false;
+        
+        // Destroy HLS instance
         if (this.hls) {
             this.hls.destroy();
             this.hls = null;
         }
+        
+        // Cleanup video element
         if (this.video) {
             this.video.pause();
             this.video.src = '';
@@ -361,8 +438,8 @@ class LiveStreamPlayer {
                 
                 if (data.success && data.stream) {
                     if (data.stream.status !== 'live') {
-                        console.log('📡 Stream has ended');
-                        this.destroy();
+                        console.log('📡 Stream has ended, stopping engagement and playback');
+                        this.destroy(); // This will stop all timers
                         this.showStreamEnded();
                         return; // Stop monitoring
                     }
@@ -372,7 +449,7 @@ class LiveStreamPlayer {
             }
             
             // Check again in 10 seconds
-            setTimeout(checkStatus, 10000);
+            this.statusTimer = setTimeout(checkStatus, 10000);
         };
         
         // Start monitoring after initial delay
