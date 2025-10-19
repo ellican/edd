@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mux Integration Test - FezaMarket</title>
+    
+    <!-- Video.js CSS -->
+    <link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f3f4f6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        h2 {
+            color: #374151;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        
+        .player-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto 30px;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .video-js {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background: #2563eb;
+        }
+        
+        button.secondary {
+            background: #6b7280;
+        }
+        
+        button.secondary:hover {
+            background: #4b5563;
+        }
+        
+        button.danger {
+            background: #dc2626;
+        }
+        
+        button.danger:hover {
+            background: #b91c1c;
+        }
+        
+        .status {
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .status.success {
+            background: #dcfce7;
+            color: #15803d;
+        }
+        
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .credentials {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .credential-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        
+        .credential-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .credential-row input {
+            flex: 1;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .credential-row button {
+            padding: 8px 15px;
+        }
+        
+        .log {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+        }
+        
+        .log-entry.error {
+            color: #fca5a5;
+        }
+        
+        .log-entry.success {
+            color: #86efac;
+        }
+        
+        .log-entry.info {
+            color: #93c5fd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 Mux Live Streaming Integration Test</h1>
+        <p style="color: #6b7280; margin-bottom: 30px;">Test the Mux integration for live streaming</p>
+        
+        <!-- Video Player Section -->
+        <div class="section">
+            <h2>📺 Live Stream Player</h2>
+            <div class="player-container">
+                <video id="test-player" class="video-js vjs-default-skin vjs-big-play-centered" controls preload="auto">
+                    <p class="vjs-no-js">
+                        To view this video please enable JavaScript, and consider upgrading to a web browser that
+                        <a href="https://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a>
+                    </p>
+                </video>
+            </div>
+            
+            <div class="input-group">
+                <label>HLS Stream URL (e.g., https://stream.mux.com/{playback_id}.m3u8)</label>
+                <input type="text" id="stream-url" placeholder="https://stream.mux.com/your-playback-id.m3u8">
+            </div>
+            
+            <div class="input-group">
+                <label>Mux Environment Key (for analytics)</label>
+                <input type="text" id="mux-env-key" placeholder="env_abc123xyz789">
+            </div>
+            
+            <button onclick="loadStream()">Load Stream</button>
+            <button class="secondary" onclick="clearPlayer()">Clear Player</button>
+        </div>
+        
+        <!-- API Test Section -->
+        <div class="section">
+            <h2>🔧 API Testing</h2>
+            
+            <div id="api-status" class="status info">
+                Ready to test API endpoints
+            </div>
+            
+            <div class="input-group">
+                <label>Stream Title</label>
+                <input type="text" id="stream-title" placeholder="Test Stream" value="Test Stream">
+            </div>
+            
+            <div class="input-group">
+                <label>Stream Description</label>
+                <input type="text" id="stream-description" placeholder="Testing Mux integration">
+            </div>
+            
+            <button onclick="createStream()">Create Mux Stream</button>
+            <button class="secondary" onclick="getStreamInfo()">Get Stream Info</button>
+            <button class="danger" onclick="deleteStream()">Delete Stream</button>
+            
+            <div id="credentials" style="display: none;">
+                <h3 style="margin-top: 20px; margin-bottom: 10px; color: #374151;">RTMP Credentials</h3>
+                <div class="credentials">
+                    <div class="credential-row">
+                        <input type="text" id="rtmp-url" readonly>
+                        <button class="secondary" onclick="copyToClipboard('rtmp-url')">Copy</button>
+                    </div>
+                    <div class="credential-row">
+                        <input type="password" id="stream-key" readonly>
+                        <button class="secondary" onclick="toggleVisibility('stream-key')">Show</button>
+                        <button class="secondary" onclick="copyToClipboard('stream-key')">Copy</button>
+                    </div>
+                </div>
+                <p style="margin-top: 10px; color: #6b7280; font-size: 14px;">
+                    Use these credentials in OBS Studio to start broadcasting
+                </p>
+            </div>
+        </div>
+        
+        <!-- Event Log -->
+        <div class="section">
+            <h2>📋 Event Log</h2>
+            <div id="event-log" class="log">
+                <div class="log-entry info">Ready for testing...</div>
+            </div>
+            <button class="secondary" onclick="clearLog()" style="margin-top: 10px;">Clear Log</button>
+        </div>
+    </div>
+    
+    <!-- Video.js JavaScript -->
+    <script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
+    
+    <!-- Mux Data SDK -->
+    <script src="https://src.litix.io/videojs/3/videojs-mux.js"></script>
+    
+    <script>
+        let player = null;
+        let currentStreamId = null;
+        
+        // Initialize empty player
+        document.addEventListener('DOMContentLoaded', function() {
+            player = videojs('test-player', {
+                controls: true,
+                autoplay: false,
+                preload: 'auto',
+                fluid: false,
+                responsive: true,
+                liveui: true
+            });
+            
+            // Set up event listeners
+            player.on('loadstart', () => logEvent('Loading stream...', 'info'));
+            player.on('loadedmetadata', () => logEvent('Metadata loaded', 'success'));
+            player.on('playing', () => logEvent('Stream is playing', 'success'));
+            player.on('pause', () => logEvent('Stream paused', 'info'));
+            player.on('ended', () => logEvent('Stream ended', 'info'));
+            player.on('error', () => {
+                const error = player.error();
+                logEvent('Player error: ' + (error ? error.message : 'Unknown error'), 'error');
+            });
+            player.on('waiting', () => logEvent('Buffering...', 'info'));
+        });
+        
+        function loadStream() {
+            const streamUrl = document.getElementById('stream-url').value;
+            const envKey = document.getElementById('mux-env-key').value;
+            
+            if (!streamUrl) {
+                alert('Please enter a stream URL');
+                return;
+            }
+            
+            logEvent('Loading stream: ' + streamUrl, 'info');
+            
+            player.src({
+                src: streamUrl,
+                type: 'application/x-mpegURL'
+            });
+            
+            // Initialize Mux Data if env key provided
+            if (envKey && typeof window.initVideoJsMux !== 'undefined') {
+                logEvent('Initializing Mux Data SDK with key: ' + envKey, 'info');
+                try {
+                    window.initVideoJsMux(player, {
+                        debug: true,
+                        data: {
+                            env_key: envKey,
+                            player_name: 'Test Player',
+                            video_id: 'test-stream',
+                            video_title: 'Test Stream',
+                            video_stream_type: 'live'
+                        }
+                    });
+                    logEvent('Mux Data SDK initialized', 'success');
+                } catch (e) {
+                    logEvent('Failed to initialize Mux Data: ' + e.message, 'error');
+                }
+            }
+            
+            player.play().catch(err => {
+                logEvent('Autoplay prevented: ' + err.message, 'info');
+            });
+        }
+        
+        function clearPlayer() {
+            player.pause();
+            player.src('');
+            logEvent('Player cleared', 'info');
+        }
+        
+        function createStream() {
+            const title = document.getElementById('stream-title').value;
+            const description = document.getElementById('stream-description').value;
+            
+            if (!title) {
+                alert('Please enter a stream title');
+                return;
+            }
+            
+            updateStatus('Creating stream via Mux API...', 'info');
+            logEvent('Creating stream: ' + title, 'info');
+            
+            fetch('/api/streams/create-mux.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    title: title,
+                    description: description,
+                    chat_enabled: 1
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    updateStatus('Stream created successfully! Stream ID: ' + result.stream_id, 'success');
+                    logEvent('Stream created: ' + result.stream_id, 'success');
+                    logEvent('Playback URL: ' + result.playback_url, 'success');
+                    
+                    currentStreamId = result.stream_id;
+                    
+                    // Show credentials
+                    document.getElementById('credentials').style.display = 'block';
+                    document.getElementById('rtmp-url').value = result.rtmp_credentials.rtmp_url;
+                    document.getElementById('stream-key').value = result.rtmp_credentials.stream_key;
+                    
+                    // Auto-fill stream URL
+                    document.getElementById('stream-url').value = result.playback_url;
+                } else {
+                    updateStatus('Error: ' + result.error, 'error');
+                    logEvent('API Error: ' + result.error, 'error');
+                }
+            })
+            .catch(error => {
+                updateStatus('Network error: ' + error.message, 'error');
+                logEvent('Network error: ' + error.message, 'error');
+            });
+        }
+        
+        function getStreamInfo() {
+            if (!currentStreamId) {
+                alert('Please create a stream first');
+                return;
+            }
+            
+            logEvent('Fetching stream info for ID: ' + currentStreamId, 'info');
+            
+            fetch('/api/streams/get.php?stream_id=' + currentStreamId)
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    logEvent('Stream info: ' + JSON.stringify(result.stream, null, 2), 'success');
+                } else {
+                    logEvent('Error: ' + result.error, 'error');
+                }
+            })
+            .catch(error => {
+                logEvent('Network error: ' + error.message, 'error');
+            });
+        }
+        
+        function deleteStream() {
+            if (!currentStreamId) {
+                alert('Please create a stream first');
+                return;
+            }
+            
+            if (!confirm('Delete stream ' + currentStreamId + '?')) {
+                return;
+            }
+            
+            logEvent('Deleting stream: ' + currentStreamId, 'info');
+            
+            fetch('/api/streams/delete.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    stream_id: currentStreamId
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    updateStatus('Stream deleted successfully', 'success');
+                    logEvent('Stream deleted: ' + currentStreamId, 'success');
+                    currentStreamId = null;
+                    document.getElementById('credentials').style.display = 'none';
+                } else {
+                    updateStatus('Error: ' + result.error, 'error');
+                    logEvent('API Error: ' + result.error, 'error');
+                }
+            })
+            .catch(error => {
+                updateStatus('Network error: ' + error.message, 'error');
+                logEvent('Network error: ' + error.message, 'error');
+            });
+        }
+        
+        function copyToClipboard(elementId) {
+            const input = document.getElementById(elementId);
+            input.select();
+            document.execCommand('copy');
+            
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = '✓ Copied';
+            setTimeout(() => {
+                button.textContent = originalText;
+            }, 2000);
+            
+            logEvent('Copied to clipboard: ' + elementId, 'info');
+        }
+        
+        function toggleVisibility(elementId) {
+            const input = document.getElementById(elementId);
+            const button = event.target;
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.textContent = 'Hide';
+            } else {
+                input.type = 'password';
+                button.textContent = 'Show';
+            }
+        }
+        
+        function updateStatus(message, type) {
+            const status = document.getElementById('api-status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+        }
+        
+        function logEvent(message, type = 'info') {
+            const log = document.getElementById('event-log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + type;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function clearLog() {
+            const log = document.getElementById('event-log');
+            log.innerHTML = '<div class="log-entry info">Log cleared</div>';
+        }
+    </script>
+</body>
+</html>

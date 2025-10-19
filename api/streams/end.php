@@ -118,29 +118,50 @@ try {
     ]);
     
     if ($action === 'save') {
-        // Generate video path: /uploads/streams/{seller_id}/{stream_id}.mp4
-        // Create directory structure if it doesn't exist
-        $uploadsBase = $_SERVER['DOCUMENT_ROOT'] . '/uploads/streams';
-        $sellerDir = $uploadsBase . '/' . $vendorInfo['id'];
-        
-        if (!file_exists($uploadsBase)) {
-            mkdir($uploadsBase, 0755, true);
+        // Check if stream uses Mux - if so, the replay will be available via Mux automatically
+        if (!empty($stream['mux_stream_id']) && !empty($stream['mux_playback_id'])) {
+            // Mux automatically creates an asset for replay
+            // The same playback URL will serve the replay after the stream ends
+            $videoUrl = $stream['stream_url']; // Keep the same Mux HLS URL
+            
+            // Optionally, we could call Mux API to get asset details
+            if (file_exists(__DIR__ . '/../../includes/MuxStreamService.php')) {
+                require_once __DIR__ . '/../../includes/MuxStreamService.php';
+                try {
+                    $muxService = new MuxStreamService();
+                    // Get updated stream details from Mux
+                    $muxDetails = $muxService->getStreamDetails($stream['mux_stream_id']);
+                    if ($muxDetails && isset($muxDetails['recent_asset_ids']) && !empty($muxDetails['recent_asset_ids'])) {
+                        // Asset was created - replay is available
+                        error_log("Mux asset created for stream {$streamId}: " . $muxDetails['recent_asset_ids'][0]);
+                    }
+                } catch (Exception $e) {
+                    error_log("Failed to get Mux stream details: " . $e->getMessage());
+                }
+            }
+        } else {
+            // Non-Mux stream: Generate video path for local storage
+            $uploadsBase = $_SERVER['DOCUMENT_ROOT'] . '/uploads/streams';
+            $sellerDir = $uploadsBase . '/' . $vendorInfo['id'];
+            
+            if (!file_exists($uploadsBase)) {
+                mkdir($uploadsBase, 0755, true);
+            }
+            if (!file_exists($sellerDir)) {
+                mkdir($sellerDir, 0755, true);
+            }
+            
+            // Generate the video file path (web-accessible path)
+            $videoUrl = '/uploads/streams/' . $vendorInfo['id'] . '/' . $streamId . '.mp4';
+            
+            // Note: Actual video recording/encoding would happen here in production
+            // This would involve:
+            // 1. Capturing the WebRTC stream to server
+            // 2. Encoding to H.264/AAC MP4 format
+            // 3. Optionally generating HLS variants
         }
-        if (!file_exists($sellerDir)) {
-            mkdir($sellerDir, 0755, true);
-        }
         
-        // Generate the video file path (web-accessible path)
-        $videoUrl = '/uploads/streams/' . $vendorInfo['id'] . '/' . $streamId . '.mp4';
-        
-        // Note: Actual video recording/encoding would happen here in production
-        // This would involve:
-        // 1. Capturing the WebRTC stream to server
-        // 2. Encoding to H.264/AAC MP4 format
-        // 3. Optionally generating HLS variants
-        // For now, we're storing the path where the video would be saved
         // Mark stream as archived (saved for replay)
-        // Store metadata: file_path, duration_seconds, likes, viewers_peak, comments, orders, revenue_cents
         try {
             $stmt = $db->prepare("
                 UPDATE live_streams 

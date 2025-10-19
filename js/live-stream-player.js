@@ -8,9 +8,12 @@ class LiveStreamPlayer {
         this.container = document.getElementById(containerId);
         this.streamId = streamId;
         this.video = null;
+        this.videoJsPlayer = null; // Video.js player instance
         this.hls = null;
         this.isLive = false;
         this.streamUrl = null;
+        this.playbackId = null;
+        this.useMux = false;
         this.retryCount = 0;
         this.maxRetries = 12; // Retry for up to 1 minute (12 * 5 seconds)
         this.retryInterval = 5000; // 5 seconds
@@ -39,26 +42,39 @@ class LiveStreamPlayer {
             }
 
             this.streamUrl = streamData.stream_url;
+            this.playbackId = streamData.playback_id || streamData.mux_playback_id;
             this.isLive = streamData.is_live;
+            
+            // Check if this is a Mux stream
+            this.useMux = this.streamUrl && this.streamUrl.includes('stream.mux.com');
             
             console.log('📡 Stream URL:', this.streamUrl);
             console.log('🔴 Is Live:', this.isLive);
+            console.log('🎬 Playback ID:', this.playbackId);
+            console.log('🔧 Use Mux:', this.useMux);
 
             // Create video element
-            this.createVideoElement();
-
-            // Initialize HLS if supported and URL is m3u8
-            if (this.streamUrl && this.streamUrl.includes('.m3u8')) {
-                console.log('🎥 Initializing HLS player for .m3u8 stream');
-                this.initHLS();
-            } else if (this.streamUrl) {
-                // Direct video source (MP4, WebM, etc.)
-                console.log('📹 Loading direct video source');
-                this.video.src = this.streamUrl;
+            if (this.useMux && typeof videojs !== 'undefined') {
+                // Use Video.js for Mux streams
+                console.log('🎥 Initializing Video.js player with Mux');
+                this.initVideoJs();
             } else {
-                console.log('⏳ No stream URL available, showing waiting message');
-                this.showWaitingMessage();
-                this.retryStreamLoad();
+                // Use HLS.js or native player for non-Mux streams
+                this.createVideoElement();
+
+                // Initialize HLS if supported and URL is m3u8
+                if (this.streamUrl && this.streamUrl.includes('.m3u8')) {
+                    console.log('🎥 Initializing HLS player for .m3u8 stream');
+                    this.initHLS();
+                } else if (this.streamUrl) {
+                    // Direct video source (MP4, WebM, etc.)
+                    console.log('📹 Loading direct video source');
+                    this.video.src = this.streamUrl;
+                } else {
+                    console.log('⏳ No stream URL available, showing waiting message');
+                    this.showWaitingMessage();
+                    this.retryStreamLoad();
+                }
             }
 
         } catch (error) {
@@ -114,6 +130,149 @@ class LiveStreamPlayer {
         return await response.json();
     }
 
+    /**
+     * Initialize Video.js player with Mux integration
+     */
+    initVideoJs() {
+        // Clear container
+        this.container.innerHTML = '';
+        
+        // Create video element with Video.js classes
+        this.video = document.createElement('video');
+        this.video.id = 'liveStreamVideo';
+        this.video.className = 'video-js vjs-default-skin vjs-big-play-centered';
+        this.video.controls = true;
+        this.video.autoplay = true;
+        this.video.muted = true; // Required for autoplay
+        this.video.playsInline = true;
+        this.video.style.width = '100%';
+        this.video.style.height = '100%';
+        
+        // Add source
+        const source = document.createElement('source');
+        source.src = this.streamUrl;
+        source.type = 'application/x-mpegURL';
+        this.video.appendChild(source);
+        
+        this.container.appendChild(this.video);
+        
+        // Initialize Video.js
+        this.videoJsPlayer = videojs('liveStreamVideo', {
+            controls: true,
+            autoplay: 'muted',
+            preload: 'auto',
+            fluid: true,
+            responsive: true,
+            liveui: true,
+            html5: {
+                vhs: {
+                    overrideNative: true
+                },
+                nativeAudioTracks: false,
+                nativeVideoTracks: false
+            }
+        });
+        
+        // Initialize Mux Data SDK if available and environment key is set
+        const muxEnvKey = this.getMuxEnvKey();
+        if (typeof window.initVideoJsMux !== 'undefined' && muxEnvKey) {
+            console.log('📊 Initializing Mux Data SDK for analytics');
+            window.initVideoJsMux(this.videoJsPlayer, {
+                debug: false,
+                data: {
+                    env_key: muxEnvKey,
+                    player_name: 'FezaMarket Live Player',
+                    player_init_time: Date.now(),
+                    video_id: `stream-${this.streamId}`,
+                    video_title: document.title,
+                    video_stream_type: 'live',
+                    viewer_user_id: this.getViewerId(),
+                    page_type: 'livestream',
+                    // Custom dimensions for tracking
+                    custom_1: `stream-${this.streamId}`,
+                    custom_2: this.playbackId
+                }
+            });
+        }
+        
+        // Set up event listeners
+        this.videoJsPlayer.on('loadedmetadata', () => {
+            console.log('✅ Video.js: Metadata loaded');
+        });
+        
+        this.videoJsPlayer.on('playing', () => {
+            console.log('✅ Video.js: Stream is playing');
+            this.streamPlayable = true;
+            
+            // Unmute after first play
+            if (this.videoJsPlayer.muted()) {
+                this.videoJsPlayer.muted(false);
+            }
+            
+            // Start engagement
+            this.startEngagement();
+        });
+        
+        this.videoJsPlayer.on('error', () => {
+            const error = this.videoJsPlayer.error();
+            console.error('❌ Video.js error:', error);
+            
+            if (!this.streamPlayable && this.retryCount < this.maxRetries) {
+                console.log('📡 Stream not yet available, will retry...');
+                this.destroy();
+                this.showWaitingMessage();
+                this.retryStreamLoad();
+            } else {
+                this.showError('Error loading video stream');
+            }
+        });
+        
+        this.videoJsPlayer.on('waiting', () => {
+            console.log('⏳ Video.js: Buffering...');
+        });
+        
+        this.videoJsPlayer.on('stalled', () => {
+            console.log('⚠️ Video.js: Stream stalled');
+        });
+        
+        // Retry logic for failed loads
+        this.videoJsPlayer.on('loadstart', () => {
+            console.log('📥 Video.js: Starting to load stream');
+        });
+    }
+    
+    /**
+     * Get Mux environment key from page or configuration
+     */
+    getMuxEnvKey() {
+        // Check if defined globally
+        if (typeof MUX_ENV_KEY !== 'undefined') {
+            return MUX_ENV_KEY;
+        }
+        
+        // Check meta tag
+        const metaTag = document.querySelector('meta[name="mux-env-key"]');
+        if (metaTag) {
+            return metaTag.getAttribute('content');
+        }
+        
+        // Return null if not found - analytics won't be initialized
+        return null;
+    }
+    
+    /**
+     * Get viewer ID for analytics
+     */
+    getViewerId() {
+        // Try to get from session or generate anonymous ID
+        let viewerId = sessionStorage.getItem('viewerId');
+        if (!viewerId) {
+            viewerId = 'anon-' + Math.random().toString(36).substr(2, 9);
+            sessionStorage.setItem('viewerId', viewerId);
+        }
+        return viewerId;
+    }
+    
     /**
      * Create video element in container
      */
@@ -412,6 +571,16 @@ class LiveStreamPlayer {
         // Mark engagement as stopped
         this.engagementStarted = false;
         this.streamPlayable = false;
+        
+        // Destroy Video.js player
+        if (this.videoJsPlayer) {
+            try {
+                this.videoJsPlayer.dispose();
+            } catch (e) {
+                console.error('Error disposing Video.js player:', e);
+            }
+            this.videoJsPlayer = null;
+        }
         
         // Destroy HLS instance
         if (this.hls) {

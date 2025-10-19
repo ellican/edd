@@ -201,8 +201,137 @@ function startLiveStream() {
         return;
     }
     
-    // Redirect to streaming interface with selected products
-    window.location.href = '/seller/stream-interface.php?products=' + selectedProducts.join(',');
+    // Show loading
+    const button = event.target;
+    const originalText = button.textContent;
+    button.textContent = 'Creating Stream...';
+    button.disabled = true;
+    
+    // Prompt for stream title
+    const title = prompt('Enter a title for your live stream:');
+    if (!title) {
+        button.textContent = originalText;
+        button.disabled = false;
+        return;
+    }
+    
+    const description = prompt('Enter a brief description (optional):');
+    
+    // Create Mux live stream
+    fetch('/api/streams/create-mux.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            title: title,
+            description: description,
+            chat_enabled: 1
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // Show RTMP credentials in a modal
+            showRTMPCredentials(result);
+        } else {
+            alert('❌ Error: ' + (result.error || 'Failed to create stream'));
+            button.textContent = originalText;
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Error creating stream. Please try again.');
+        button.textContent = originalText;
+        button.disabled = false;
+    });
+}
+
+function showRTMPCredentials(streamData) {
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 20px;';
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 12px; padding: 30px; max-width: 600px; width: 100%;">
+            <h2 style="margin-bottom: 20px; color: #333;">🎬 Stream Created Successfully!</h2>
+            
+            <p style="margin-bottom: 20px; color: #666;">
+                Use these credentials in OBS Studio or your streaming software:
+            </p>
+            
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">RTMP Server URL:</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="text" id="rtmpUrl" value="${streamData.rtmp_credentials.rtmp_url}" readonly 
+                           style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-family: monospace;">
+                    <button onclick="copyToClipboard('rtmpUrl')" style="padding: 8px 15px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Copy
+                    </button>
+                </div>
+            </div>
+            
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Stream Key:</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="password" id="streamKey" value="${streamData.rtmp_credentials.stream_key}" readonly 
+                           style="flex: 1; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-family: monospace;">
+                    <button onclick="toggleVisibility('streamKey')" style="padding: 8px 15px; background: #6b7280; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Show
+                    </button>
+                    <button onclick="copyToClipboard('streamKey')" style="padding: 8px 15px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Copy
+                    </button>
+                </div>
+            </div>
+            
+            <div style="background: #fef3c7; border: 1px solid #fbbf24; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <p style="margin: 0; color: #92400e; font-size: 14px;">
+                    <strong>⚠️ Important:</strong> Keep your stream key private. Anyone with this key can broadcast to your stream.
+                </p>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button onclick="this.closest('div[style*=fixed]').remove()" 
+                        style="padding: 10px 20px; background: #e5e7eb; color: #374151; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    Close
+                </button>
+                <a href="/seller/streams.php" 
+                   style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; text-decoration: none; display: inline-block;">
+                    Manage Streams
+                </a>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+function copyToClipboard(elementId) {
+    const input = document.getElementById(elementId);
+    input.select();
+    document.execCommand('copy');
+    
+    // Show feedback
+    const button = event.target;
+    const originalText = button.textContent;
+    button.textContent = '✓ Copied!';
+    setTimeout(() => {
+        button.textContent = originalText;
+    }, 2000);
+}
+
+function toggleVisibility(elementId) {
+    const input = document.getElementById(elementId);
+    const button = event.target;
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        button.textContent = 'Hide';
+    } else {
+        input.type = 'password';
+        button.textContent = 'Show';
+    }
 }
 
 function scheduleEvent() {

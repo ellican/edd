@@ -116,6 +116,12 @@ if (!empty($seoConfig)) {
     }
     echo SEO::generateOrganizationSchema() . "\n";
 }
+
+// Output Mux environment key for analytics
+$muxEnvKey = getenv('MUX_ENVIRONMENT_KEY');
+if ($muxEnvKey) {
+    echo '<meta name="mux-env-key" content="' . htmlspecialchars($muxEnvKey) . '">' . "\n";
+}
 ?>
 
 <div class="container">
@@ -1070,7 +1076,16 @@ if (!empty($seoConfig)) {
 }
 </style>
 
-<!-- Include HLS.js for adaptive streaming -->
+<!-- Video.js CSS -->
+<link href="https://vjs.zencdn.net/8.6.1/video-js.css" rel="stylesheet" />
+
+<!-- Video.js JavaScript -->
+<script src="https://vjs.zencdn.net/8.6.1/video.min.js"></script>
+
+<!-- Mux Data SDK for Analytics -->
+<script src="https://src.litix.io/videojs/3/videojs-mux.js"></script>
+
+<!-- Include HLS.js for adaptive streaming (fallback) -->
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
 <!-- Include Live Stream Player -->
